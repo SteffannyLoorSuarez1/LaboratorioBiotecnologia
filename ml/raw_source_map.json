@@ -1,0 +1,15 @@
+{
+  "_comment": "Mapeo class_id -> ruta relativa REAL de la carpeta de fotos dentro de la carpeta que el usuario proporciono como raiz de originales. Los originales usan nombres de carpeta 'humanos' (con acentos, mayusculas, subcarpetas duplicadas o nombres de exportacion de Google Drive), distintos de 'raw_folder'/'name_internal' en classes.json. Este archivo NO renombra ni mueve nada: solo le dice a scripts/validate_raw_dataset.py donde buscar las fotos de cada clase. El class_id y name_internal de cada clase NUNCA cambian aunque el usuario renombre la carpeta humana correspondiente. Actualizar manualmente si la estructura de esa carpeta cambia (fotos nuevas, carpetas renombradas o eliminadas).",
+  "root_hint": "C:\\Users\\stefy\\Documents\\RECOPILACION DE INFORMACION - LABORATORIO DE BIOTECNOLOGIA",
+  "captured_on": "2026-08-30",
+  "last_updated": "2026-08-31 (usuario renombro la carpeta de electroforesis, de nombre muy largo -causaba fallos de ruta >260 caracteres en LabelImg- a 'Electroforesis B1-BP'; la carpeta ' - txt' hermana se renombro igual y conserva sus 16 etiquetas existentes)",
+  "classes": {
+    "bod_sensor": "AREA - CULTIVO DE TEJIDOS VEGETALES/DBO Digital sensor rotativo/BOD SENSOR",
+    "lux_fc_meter": "AREA - CULTIVO DE TEJIDOS VEGETALES/luxómetro digital portátil",
+    "medidor_multiparametro": "AREA - CULTIVO DE TEJIDOS VEGETALES/medidor multiparámetro electroquímico de mesa",
+    "electroforesis_owl_easycast": "AREA - CULTIVO DE TEJIDOS VEGETALES/Electroforesis B1-BP",
+    "armario_calefactor_ule600": "AREA - MICROBIOLOGIA/Armario calefactor ULE 600/Armario calefactor ULE 600",
+    "horno_secado": "AREA - MICROBIOLOGIA/Horno de secado/Horno de secado",
+    "uv_pcr_workstation": "AREA - MICROBIOLOGIA/UV PCR Workstation"
+  }
+}

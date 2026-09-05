@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Solo se incluye en builds de DEBUG (app/src/debug). Permite tráfico HTTP (cleartext)
+    únicamente para poder probar contra un backend FastAPI local durante el desarrollo
+    (por ejemplo http://192.168.X.X:8000). Los builds de RELEASE no incluyen este archivo
+    ni el atributo android:networkSecurityConfig (ver app/src/debug/AndroidManifest.xml),
+    por lo que en producción se mantiene el comportamiento seguro por defecto de Android
+    (solo HTTPS). En producción, el backend debería exponerse mediante HTTPS.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

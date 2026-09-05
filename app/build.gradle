@@ -1,0 +1,76 @@
+plugins {
+    alias(libs.plugins.android.application)
+}
+
+android {
+    namespace 'com.uteq.sofware.deteccindeequiposlaboratoriodebiotecnologa'
+    compileSdk {
+        version = release(36) {
+            minorApiLevel = 1
+        }
+    }
+
+    defaultConfig {
+        applicationId "com.uteq.sofware.deteccindeequiposlaboratoriodebiotecnologa"
+        minSdk 31
+        targetSdk 36
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        release {
+            optimization {
+                enable false
+            }
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    androidResources {
+        // best.tflite debe quedar SIN comprimir dentro del APK: si AAPT lo comprime,
+        // AssetManager.openFd() (usado para mapear el modelo directo a memoria en
+        // YoloTfliteDetector) falla en tiempo de ejecucion con "This file can not be
+        // opened as a file descriptor; it is probably compressed".
+        noCompress "tflite"
+    }
+}
+
+dependencies {
+    implementation libs.activity.ktx
+    implementation libs.appcompat
+    implementation libs.constraintlayout
+    implementation libs.material
+    implementation libs.recyclerview
+
+    // CameraX: vista previa de cámara en tiempo real (preparado para la futura inferencia YOLO)
+    implementation libs.camera.core
+    implementation libs.camera.camera2
+    implementation libs.camera.lifecycle
+    implementation libs.camera.view
+
+    // Comunicación HTTP con el backend (FastAPI)
+    implementation libs.volley
+
+    // Almacenamiento cifrado de la OpenAI API Key introducida por el usuario (Android Keystore)
+    implementation libs.security.crypto
+
+    // LiteRT (nombre actual de TensorFlow Lite): runtime de inferencia para YoloTfliteDetector.
+    // Mismo ecosistema que ai-edge-litert (usado en Colab para exportar best.tflite) -> misma
+    // familia de runtime que interpreta el flatbuffer generado. CPU/XNNPACK por defecto (ver
+    // docs/YOLO_SETUP.md, "CPU vs. GPU delegate en Android"), sin delegate GPU por ahora.
+    implementation libs.litert
+
+    testImplementation libs.junit
+    androidTestImplementation libs.espresso.core
+    androidTestImplementation libs.ext.junit
+}

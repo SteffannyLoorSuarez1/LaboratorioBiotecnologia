@@ -1,0 +1,5 @@
+{
+  "_comment": "Configuracion unica del detector. Usada por scripts/evaluate.py y scripts/export_tflite.py como valor por defecto. El lado Android mantiene su propia unica constante equivalente en app/src/main/java/.../detector/DetectorConfig.java (no se puede leer JSON de ml/ en tiempo de compilacion de Android); si cambias este valor, actualiza tambien esa constante y deja constancia en el commit.",
+  "confidence_threshold": 0.5,
+  "iou_threshold": 0.45
+}

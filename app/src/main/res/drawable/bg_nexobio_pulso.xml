@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Anillo (solo borde, sin relleno) que NexoBioAnimador escala y desvanece alrededor del
+     avatar en los estados ESCUCHANDO/HABLANDO, como un "ping" de sonar suave. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <stroke
+        android:width="2dp"
+        android:color="@color/lab_secondary" />
+    <solid android:color="@android:color/transparent" />
+</shape>

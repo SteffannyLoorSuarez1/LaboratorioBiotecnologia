@@ -1,0 +1,22 @@
+train: images/train
+val: images/val
+test: images/test
+nc: 17
+names:
+  0: autoclave_vapor_mesa_gemmy_sturdy
+  1: cabina_flujo_laminar_mini_c4
+  2: centrifuga_laboratorio_ohaus
+  3: medidor_mesa_electroquimica_ohaus
+  4: termociclador_miniamp_plus
+  5: bano_maria_memmert
+  6: cubeta_electroforesis_horizontal_gel
+  7: espectrofotometro_visible_digital_unico
+  8: horno_secado_conveccion_forzada_redline
+  9: medidor_demanda_bioquimica_oxigeno
+  10: balanza_analitica_ohaus
+  11: camara_incubacion_uv_prc_workstation
+  12: estufa_laboratorio_doble_puerta
+  13: horno_secado_biobase
+  14: incubador_agitacion_orbital_incu_shaker
+  15: microscopio_boeco
+  16: camara_seguridad_biologica_biobase

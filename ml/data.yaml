@@ -1,0 +1,15 @@
+# GENERADO desde classes.json por scripts/common.py / scripts/sync_classes.py
+# No editar a mano: los cambios se perderan en la siguiente regeneracion.
+# Sin 'path:' a proposito (portable Windows/Colab/Linux) - ver docstring de
+# common.generate_data_yaml(). La raiz del dataset es la carpeta de este archivo.
+train: dataset/images/train
+val: dataset/images/val
+test: dataset/images/test
+names:
+  0: bod_sensor
+  1: lux_fc_meter
+  2: medidor_multiparametro
+  3: electroforesis_owl_easycast
+  4: armario_calefactor_ule600
+  5: horno_secado
+  6: uv_pcr_workstation

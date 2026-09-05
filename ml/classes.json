@@ -1,0 +1,76 @@
+{
+  "_comment": "FUENTE UNICA DE VERDAD de las clases del detector YOLO. NUNCA reordenar ni reutilizar class_id existentes. Las nuevas clases se agregan siempre con el siguiente class_id disponible. Este archivo es leido por todos los scripts de ml/ (via scripts/common.py) para generar data.yaml y labels.txt, evitando listas duplicadas.",
+  "version": 1,
+  "areas": [
+    {
+      "area_id": "area_cultivo_tejidos",
+      "nombre": "Área de cultivo de tejidos vegetales"
+    },
+    {
+      "area_id": "area_microbiologia",
+      "nombre": "Área de microbiología"
+    },
+    {
+      "area_id": "area_biologia_molecular",
+      "nombre": "Área de biología molecular"
+    }
+  ],
+  "classes": [
+    {
+      "class_id": 0,
+      "name_internal": "bod_sensor",
+      "name_display": "BOD Sensor",
+      "area_id": "area_cultivo_tejidos",
+      "raw_folder": "bod_sensor",
+      "photos_approx": 30
+    },
+    {
+      "class_id": 1,
+      "name_internal": "lux_fc_meter",
+      "name_display": "Broad Range LUX/FC Meter",
+      "area_id": "area_cultivo_tejidos",
+      "raw_folder": "lux_fc_meter",
+      "photos_approx": 32
+    },
+    {
+      "class_id": 2,
+      "name_internal": "medidor_multiparametro",
+      "name_display": "Medidor multiparámetro electroquímico de mesa",
+      "area_id": "area_cultivo_tejidos",
+      "raw_folder": "medidor_multiparametro",
+      "photos_approx": 26
+    },
+    {
+      "class_id": 3,
+      "name_internal": "electroforesis_owl_easycast",
+      "name_display": "Sistema de electroforesis horizontal Thermo Scientific Owl EasyCast B1-BP",
+      "area_id": "area_cultivo_tejidos",
+      "raw_folder": "electroforesis_owl_easycast",
+      "photos_approx": 20
+    },
+    {
+      "class_id": 4,
+      "name_internal": "armario_calefactor_ule600",
+      "name_display": "Armario calefactor ULE 600",
+      "area_id": "area_microbiologia",
+      "raw_folder": "armario_calefactor_ule600",
+      "photos_approx": 34
+    },
+    {
+      "class_id": 5,
+      "name_internal": "horno_secado",
+      "name_display": "Horno de secado",
+      "area_id": "area_microbiologia",
+      "raw_folder": "horno_secado",
+      "photos_approx": 32
+    },
+    {
+      "class_id": 6,
+      "name_internal": "uv_pcr_workstation",
+      "name_display": "UV PCR Workstation",
+      "area_id": "area_microbiologia",
+      "raw_folder": "uv_pcr_workstation",
+      "photos_approx": 6
+    }
+  ]
+}

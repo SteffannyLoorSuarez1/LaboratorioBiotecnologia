@@ -1,0 +1,107 @@
+<resources>
+    <string name="app_name">Detección de equipos Laboratorio de Biotecnología</string>
+
+    <!-- Pantalla de inicio -->
+    <string name="home_title">Laboratorio de Biotecnología</string>
+    <string name="home_subtitle">Universidad Técnica Estatal de Quevedo</string>
+    <string name="home_action_detect">Detectar equipos</string>
+    <string name="home_action_detect_desc">Identifica equipos con la cámara</string>
+    <string name="home_action_areas">Áreas del laboratorio</string>
+    <string name="home_action_areas_desc">Explora las áreas y sus equipos</string>
+    <string name="home_action_chat">Asistente inteligente</string>
+    <string name="home_action_chat_desc">Consulta dudas sobre el laboratorio</string>
+    <string name="home_areas_header">Áreas del laboratorio</string>
+    <string name="home_action_config">Configuración</string>
+
+    <!-- Áreas -->
+    <string name="area_cultivo_nombre">Área de cultivo de tejidos vegetales</string>
+    <string name="area_cultivo_desc">Propagación y manejo in vitro de material vegetal en condiciones asépticas.</string>
+    <string name="area_microbiologia_nombre">Área de microbiología</string>
+    <string name="area_microbiologia_desc">Aislamiento, cultivo y análisis de microorganismos.</string>
+    <string name="area_biomolecular_nombre">Área de biología molecular</string>
+    <string name="area_biomolecular_desc">Extracción, amplificación y análisis de ácidos nucleicos.</string>
+    <string name="areas_title">Áreas del laboratorio</string>
+    <string name="equipos_title">Equipos</string>
+    <string name="equipos_empty">Todavía no hay equipos registrados para esta área.</string>
+
+    <!-- Equipo -->
+    <string name="equipo_dato_demo">Dato de demostración</string>
+    <string name="equipo_info_pendiente">Información pendiente de documentación del laboratorio.</string>
+    <string name="equipo_funcion">Función</string>
+    <string name="equipo_componentes">Componentes principales</string>
+    <string name="equipo_procedimiento">Procedimiento básico</string>
+    <string name="equipo_epp">Equipo de protección personal (EPP)</string>
+    <string name="equipo_riesgos">Riesgos asociados</string>
+    <string name="equipo_practicas">Prácticas académicas relacionadas</string>
+    <string name="equipo_preguntar_asistente">Preguntar al asistente</string>
+    <string name="equipo_clase_detector">Clase del detector</string>
+
+    <!-- Detección / cámara -->
+    <string name="deteccion_title">Detección de equipos</string>
+    <string name="deteccion_modelo_pendiente">Modelo de detección pendiente de instalación</string>
+    <string name="deteccion_modelo_error">Error real cargando el modelo de detección: %1$s</string>
+    <string name="deteccion_permiso_requerido">Se requiere permiso de cámara para usar esta función.</string>
+    <string name="deteccion_conceder_permiso">Conceder permiso</string>
+    <string name="deteccion_permiso_denegado_permanente">El permiso de cámara fue denegado. Actívelo desde los ajustes de la aplicación para usar esta función.</string>
+    <string name="deteccion_abrir_ajustes">Abrir ajustes</string>
+
+    <!-- Chat -->
+    <string name="chat_title">Asistente inteligente</string>
+    <string name="chat_hint_equipo_general">Consulta general del laboratorio</string>
+    <string name="chat_input_hint">Escribe tu pregunta…</string>
+    <string name="chat_enviar">Enviar</string>
+    <string name="chat_microfono">Preguntar por voz</string>
+    <string name="chat_camara">Detectar equipo con la cámara</string>
+    <string name="chat_consultando">Consultando documentos…</string>
+    <string name="chat_escuchando">Escuchando…</string>
+    <string name="chat_procesando">Procesando…</string>
+    <string name="chat_equipo_seleccionado_label">Equipo seleccionado</string>
+    <string name="chat_cambiar_equipo">Cambiar</string>
+    <string name="chat_fuentes">Fuentes consultadas</string>
+    <string name="chat_escuchar">Escuchar respuesta</string>
+    <string name="chat_detener">Detener</string>
+    <string name="chat_sin_info">No tengo suficiente información, por favor pregúntele al laboratorista encargado.</string>
+    <string name="chat_error_red">No se pudo conectar con el servidor.</string>
+    <string name="chat_error_timeout">El servidor tardó demasiado en responder.</string>
+    <string name="chat_error_autenticacion">No fue posible autenticar el servicio de inteligencia artificial. Verifique la API Key configurada.</string>
+    <string name="chat_error_cuota">Se alcanzó un límite temporal del servicio. Intenta nuevamente.</string>
+    <string name="chat_error_servidor">El servidor tuvo un problema al procesar la pregunta.</string>
+    <string name="chat_error_generico">No se pudo procesar la solicitud. Intente nuevamente.</string>
+    <string name="chat_voz_no_entendido">No pude entenderte. Intenta hablar nuevamente.</string>
+    <string name="chat_voz_sin_voz">No detecté ninguna voz.</string>
+    <string name="chat_voz_error_red">No se pudo usar el reconocimiento de voz. Verifica tu conexión.</string>
+    <string name="chat_voz_ocupado">El reconocimiento de voz está ocupado. Intenta nuevamente.</string>
+    <string name="chat_voz_error_audio">No se pudo acceder al micrófono.</string>
+    <string name="chat_voz_error_generico">No se pudo reconocer la voz. Intenta nuevamente.</string>
+    <string name="chat_permiso_audio_requerido">Se requiere permiso de micrófono para preguntar por voz.</string>
+    <string name="chat_permiso_audio_denegado_permanente">El permiso de micrófono fue denegado. Actívelo desde los ajustes de la aplicación.</string>
+    <string name="chat_ajustes">Ajustes</string>
+    <string name="chat_sin_api_key">El asistente inteligente aún no tiene una API Key configurada.\nConfigúrala desde Ajustes para utilizar el chat.</string>
+    <string name="chat_ir_a_configuracion">Ir a configuración</string>
+
+    <!-- Configuración -->
+    <string name="config_title">Configuración</string>
+    <string name="config_seccion_asistente">ASISTENTE INTELIGENTE</string>
+    <string name="config_api_key_hint">OpenAI API Key</string>
+    <string name="config_api_key_ayuda">La clave se utiliza para conectar el asistente con OpenAI.\nNo se incluirá dentro del código de la aplicación.</string>
+    <string name="config_guardar">Guardar configuración</string>
+    <string name="config_eliminar">Eliminar clave</string>
+    <string name="config_estado_configurada">API Key configurada</string>
+    <string name="config_estado_no_configurada">API Key no configurada</string>
+    <string name="config_guardado_exitoso">Configuración guardada correctamente.</string>
+    <string name="config_eliminado_exitoso">La clave fue eliminada.</string>
+    <string name="config_api_key_vacia">Ingrese una API Key antes de guardar.</string>
+
+    <!-- Detección / cámara: modo selección desde el chat -->
+    <string name="deteccion_modo_seleccion_hint">Toca directamente el equipo detectado que quieras usar como contexto del chat.</string>
+    <string name="deteccion_equipo_seleccionado_toast">✓ Equipo seleccionado: %1$s</string>
+
+    <!-- Nombre del asistente, centralizado aquí: cambiarlo solo requiere editar este valor. -->
+    <string name="nexobio_nombre">BioTec</string>
+    <string name="nexobio_subtitulo">Asistente inteligente</string>
+    <string name="biotec_subtitulo_largo">Asistente inteligente del Laboratorio de Biotecnología</string>
+    <string name="uteq_logo_desc">Logo UTEQ</string>
+
+    <!-- Genéricos -->
+    <string name="accion_volver">Volver</string>
+</resources>

@@ -1,0 +1,56 @@
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# Backend (FastAPI) — nunca subir secretos ni entornos virtuales
+backend/.env
+**/.env
+backend/venv/
+**/venv/
+**/.venv/
+backend/__pycache__/
+**/__pycache__/
+*.pyc
+
+# ML (ver ml/README.md) — SI se versionan: classes.json, data.yaml, labels.txt,
+# scripts/, documentación, y las etiquetas .txt (dataset/labels/). NO se versionan
+# fotografías (pesan mucho y ml/raw/ nunca debe depender de git) ni artefactos
+# generados/entrenados (se regeneran con los scripts).
+ml/venv/
+ml/venv_labelimg/
+ml/raw/**/*.jpg
+ml/raw/**/*.jpeg
+ml/raw/**/*.png
+ml/raw/**/*.JPG
+ml/raw/**/*.JPEG
+ml/raw/**/*.PNG
+ml/raw/validation_report*.json
+ml/dataset/images/**/*.jpg
+ml/dataset/images/**/*.jpeg
+ml/dataset/images/**/*.png
+!ml/dataset/images/*/.gitkeep
+!ml/dataset/labels/*/.gitkeep
+ml/runs/*
+!ml/runs/.gitkeep
+ml/models/*.pt
+ml/models/*.tflite
+ml/models/preliminary/*.pt
+ml/colab_training_package.zip
+ml/inference_samples/*.jpg
+ml/inference_samples/*.jpeg
+ml/inference_samples/*.png
+
+# Modelo entrenado en Android: solo existe cuando es real (ver docs/YOLO_SETUP.md)
+app/src/main/assets/best.tflite

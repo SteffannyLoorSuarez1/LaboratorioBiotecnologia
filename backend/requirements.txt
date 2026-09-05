@@ -1,0 +1,17 @@
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+pydantic>=2.7.0
+python-dotenv>=1.0.0
+# Versión fijada (no ">=") tras verificar manualmente, contra el paquete instalado,
+# que la forma usada por rag_service.py es compatible:
+#   - client.responses.create(model=, instructions=, input=, tools=[...])
+#   - tools=[{"type": "file_search", "vector_store_ids": [...]}]  (FileSearchToolParam)
+#   - Response.output_text
+#   - excepciones: AuthenticationError, RateLimitError, BadRequestError,
+#     APIConnectionError, APIError (todas heredan de OpenAIError; las tres primeras
+#     heredan de APIStatusError)
+# El SDK de OpenAI ya pasó por varias versiones mayores desde la línea 1.x (ahora 3.x),
+# con cambios internos entre ellas (p. ej. su dependencia HTTP interna). Se fija la
+# versión exacta para que una futura instalación no traiga una versión mayor distinta
+# sin haber sido revisada primero contra este archivo.
+openai==3.5.0

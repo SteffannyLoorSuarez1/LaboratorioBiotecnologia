@@ -1,0 +1,7 @@
+# Dependencias del pipeline ML (dataset, entrenamiento, evaluacion, exportacion).
+# Instalar con: pip install -r requirements.txt
+# Recomendado usar un entorno virtual dedicado (ml/venv/), igual que backend/venv/.
+
+ultralytics>=8.4.83   # incluye torch/torchvision como dependencias; primera version con LiteRT export estable
+pillow>=10.0.0        # validacion/apertura de imagenes (corruptas, hashing perceptual)
+pyyaml>=6.0

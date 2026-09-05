@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+
+    <!-- Paleta institucional (verde biotecnología) -->
+    <color name="lab_primary">#1B5E3C</color>
+    <color name="lab_primary_dark">#123D28</color>
+    <color name="lab_primary_variant">#2E7D5B</color>
+    <color name="lab_secondary">#00897B</color>
+    <color name="lab_accent">#F5A623</color>
+
+    <color name="lab_background">#F5F7F6</color>
+    <color name="lab_surface">#FFFFFFFF</color>
+    <color name="lab_on_primary">#FFFFFFFF</color>
+    <color name="lab_text_primary">#1B1F1D</color>
+    <color name="lab_text_secondary">#5C6B64</color>
+
+    <color name="lab_warning">#B45309</color>
+    <color name="lab_warning_bg">#FFF3E0</color>
+    <color name="lab_error">#B00020</color>
+
+    <color name="lab_overlay_box">#00E676</color>
+    <color name="lab_overlay_text_bg">#CC1B5E3C</color>
+
+    <color name="chat_bubble_user">#1B5E3C</color>
+    <color name="chat_bubble_assistant">#EDEFEE</color>
+
+    <!-- Header del chat / tarjeta de contexto de equipo -->
+    <color name="lab_header_subtitle">#D7E8DF</color>
+    <color name="lab_context_card_bg">#EAF3EE</color>
+    <color name="lab_context_card_border">#CFE3D6</color>
+</resources>

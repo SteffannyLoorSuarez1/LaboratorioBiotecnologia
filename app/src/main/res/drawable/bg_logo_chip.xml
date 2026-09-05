@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Placa blanca redondeada para uteqlogo.png (fondo blanco sólido, sin transparencia): evita que
+     el logo se vea como un rectángulo blanco "flotando" sobre el header verde — el mismo blanco
+     de la placa continúa el blanco propio del PNG, así que el logo se integra sin recorte visible. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/white" />
+    <corners android:radius="6dp" />
+</shape>
