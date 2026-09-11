@@ -49,9 +49,13 @@ Referencia oficial: [Responses API y file search](https://developers.openai.com/
 
 - Configuración permite guardar una clave personal cifrada en el teléfono. Esa clave se usa en
   chat, voz, comprobación de conexión y descarga de manuales. Al eliminarla se restaura la del APK.
-- En el menú de tres puntos del chat o de voz, **Ver PDF del equipo** lista los PDFs del Vector
-  Store seleccionado. Si hay varios, el usuario elige; el original se descarga por HTTPS y se
-  abre dentro de Bio con navegación por páginas. No se entrega la clave a un navegador.
+- En el menú de tres puntos del chat o de voz, **Ver PDF del equipo** abre el manual original
+  del equipo en contexto. El PDF **no se descarga**: está empaquetado localmente en
+  `app/src/main/assets/manuales/<claseDetector>.pdf` (`ManualRepository`) y se abre dentro de
+  Bio con navegación por páginas, sin usar Internet ni la OpenAI Files API (se probó descargar
+  vía `GET /v1/files/{id}/content` y OpenAI la rechaza para archivos subidos con propósito
+  `assistants`; por eso se empaquetan localmente en su lugar). El RAG (respuestas de texto)
+  sigue consultando el Vector Store del equipo normalmente; esto solo afecta al botón "Ver PDF".
 - Al terminar el saludo inicial, Bio inicia el reconocimiento y muestra **Habla ahora** cuando
   Android confirma que escucha. Se solicita permiso de micrófono si aún no está concedido.
   No se activa en segundo plano ni al interrumpir el saludo.

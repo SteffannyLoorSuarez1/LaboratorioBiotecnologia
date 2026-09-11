@@ -1,6 +1,12 @@
 # Guía de etiquetado — Laboratorio de Biotecnología UTEQ
 
-Esta guía define cómo etiquetar las fotografías para el detector YOLO11n. Su
+> **Nota de estado:** esta guía describe el pipeline local original (7 clases, YOLO11n, ver
+> aviso al inicio de `ml/README.md`). El modelo final integrado en la app tiene **17 clases**
+> (YOLO11m, ver `README.md` de la raíz). El procedimiento de etiquetado en sí sigue siendo
+> válido para etiquetar fotos nuevas; solo actualiza `ml/classes.json` a las 17 clases reales
+> antes de generar `labels.txt` con `scripts/sync_classes.py` si vas a retomar este flujo.
+
+Esta guía define cómo etiquetar las fotografías para el detector YOLO. Su
 objetivo es que **cualquier persona que etiquete en distintos momentos produzca
 etiquetas consistentes entre sí**, incluso si se agregan fotos nuevas meses
 después.

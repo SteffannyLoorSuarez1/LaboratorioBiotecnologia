@@ -1,4 +1,25 @@
-# ml/ — Pipeline de detección de equipos (YOLO11n)
+# ml/ — Pipeline de detección de equipos
+
+> **MODELO EN PRODUCCIÓN (vigente):** el modelo realmente integrado en la app
+> (`app/src/main/assets/best.tflite`) es **YOLO11m**, entrenado sobre las
+> **17 clases definitivas** del dataset final (`ml/dataset_final/`, 2229
+> imágenes — ver `README.md` en la raíz del repo para las métricas y el
+> detalle completo). Ese entrenamiento final se hizo **externamente en
+> Google Colab/Drive** sobre `ml/dataset_final/`, no con los scripts locales
+> descritos más abajo.
+>
+> El resto de este documento (secciones 0 a 10) describe el **pipeline local
+> original** de este repositorio (`ml/classes.json` con 7 clases,
+> `ml/data.yaml`, `ml/labels.txt`, `ml/dataset/`, `scripts/train.py` con
+> `yolo11n.pt` por defecto): quedó **desactualizado frente al modelo final**
+> y no se regeneró tras la migración a 17 clases. Se conserva tal cual como
+> referencia histórica/plantilla reutilizable para una futura ronda de
+> reentrenamiento o para agregar clases nuevas — **no describe el estado
+> actual del modelo integrado en Android.** Si vas a reentrenar o agregar
+> clases partiendo de este pipeline, primero actualiza `ml/classes.json`,
+> `ml/data.yaml` y `ml/labels.txt` (root) a las 17 clases reales (ver la
+> tabla en el `README.md` de la raíz) antes de usar `scripts/sync_classes.py`
+> y el resto de scripts.
 
 Pipeline completo y **reutilizable** para el detector de equipos del
 Laboratorio de Biotecnología UTEQ:
@@ -12,11 +33,17 @@ Diseñado para que, cada vez que se agreguen fotografías nuevas, **no haya que
 rehacer nada**: solo agregar fotos, etiquetarlas y volver a correr el mismo
 pipeline (ver [sección 8](#8-agregar-fotografías-nuevas-en-el-futuro)).
 
-## 0. Decisión de modelo: YOLO11n (oficial, fija)
+## 0. Decisión de modelo: YOLO11n (histórica — pipeline local de 7 clases)
 
-**YOLO11n (`yolo11n.pt`) es el modelo oficial de este proyecto.** No cambiar
-de familia/modelo salvo que aparezca un impedimento técnico real y
-comprobado; si ocurre, detenerse y reportarlo antes de modificar nada.
+> Esta decisión corresponde al pipeline local descrito en este documento
+> (7 clases). El modelo final de 17 clases integrado en Android es
+> **YOLO11m**, entrenado externamente — ver el aviso al inicio de este
+> archivo y el `README.md` de la raíz.
+
+**YOLO11n (`yolo11n.pt`) fue el modelo elegido para el pipeline local de este
+proyecto.** No cambiar de familia/modelo salvo que aparezca un impedimento
+técnico real y comprobado; si ocurre, detenerse y reportarlo antes de
+modificar nada.
 
 Motivo de la decisión (2026-08-30): se evaluó también YOLO26n (la versión más
 reciente de Ultralytics en ese momento) y se descartó porque:
