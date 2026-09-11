@@ -1,3 +1,21 @@
+> **HISTÓRICO — NO es el modelo final.** Estas celdas corresponden a una corrida baseline
+> anterior (`yolo11s_final_17clases`, sobre una versión previa del dataset: train=1537/
+> val=330/test=328, antes de llegar a las 2229 imágenes finales 1561/335/333). El modelo
+> realmente integrado en Android (`app/src/main/assets/best.tflite`) es **YOLO11m**,
+> entrenado en una corrida posterior y distinta (`yolo11m_17clases_FINAL`), confirmado por:
+> - `resultados_finales_yolo11m_17clases.txt` (fuera de este repo, en la carpeta local de
+>   entrenamiento): dice explícitamente "Modelo: YOLO11m", 17 clases, y reporta exactamente
+>   las métricas finales publicadas en el `README.md` de la raíz (Precision 98.81 %, Recall
+>   97.15 %, mAP50 98.81 %, mAP50-95 83.76 %, F1 97.97 %), con ruta de origen
+>   `.../YOLO_Biotecnologia/yolo11m_17clases_FINAL/weights/best.pt`.
+> - El `best.tflite` de esa misma carpeta es, por hash SHA256, **byte a byte idéntico** al
+>   `best.tflite` integrado en `app/src/main/assets/`.
+> - El tamaño de esos archivos (`best.pt` ≈ 40.5 MB fp16, `best.tflite` ≈ 80.5 MB float32)
+>   coincide con los parámetros oficiales de YOLO11m (20.1 M), no con YOLO11s (9.4 M).
+>
+> Se conserva este documento como referencia histórica del experimento baseline, no como
+> procedimiento vigente.
+
 # Celdas Colab — YOLO11s baseline (yolo11s_final_17clases)
 
 ## Celda 1 — Montar Google Drive
