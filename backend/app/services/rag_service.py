@@ -1,26 +1,28 @@
 """
-Servicio de recuperación aumentada por generación (RAG) contra un Vector Store de OpenAI
-que contiene los documentos del Laboratorio de Biotecnología (manuales, guías de prácticas,
+Servicio de recuperación aumentada por generación (RAG) contra Vector Stores de OpenAI que
+contienen los documentos del Laboratorio de Biotecnología (manuales, guías de prácticas,
 protocolos y normas de seguridad).
 
-Implementado contra la Responses API real del SDK instalado (verificado manualmente:
-ver comentario en requirements.txt). Usa:
+Arquitectura: UN Vector Store POR EQUIPO (no uno solo compartido para todo el laboratorio).
+`clase_detector` (ver ChatRequest) se resuelve a su `vector_store_id` dedicado mediante
+`equipo_manual_map.resolver_vector_store` — única fuente de verdad de ese mapeo — y
+`file_search` se restringe SIEMPRE a ese único store:
 
     cliente.responses.create(model=..., instructions=..., input=..., tools=[
-        {"type": "file_search", "vector_store_ids": [OPENAI_VECTOR_STORE_ID]}
+        {"type": "file_search", "vector_store_ids": [vector_store_id]}
     ])
 
-Si la clase del detector (`clase_detector`, ver ChatRequest) tiene un manual verificado en
-equipo_manual_map.py, se agrega además "filters" a esa herramienta (atributo `equipo_clase`
-asignado a mano al archivo correspondiente del Vector Store): la búsqueda queda restringida a
-ESE archivo, no es solo un texto añadido al prompt. Ver equipo_manual_map.py.
+Nunca se consultan varios Vector Stores a la vez, nunca se elige uno al azar, y no existe
+ningún Vector Store "general" de respaldo: si `clase_detector` no resuelve a un store conocido
+(vacía, `None`, typo, o una clase fuera de las 17 activas), no se llama a OpenAI en absoluto
+— ver `consultar()`.
 
 Diseño desacoplado a propósito:
 - Si no hay ninguna OpenAI API Key disponible (ni la del servidor ni una enviada desde
   Android), se responde de forma controlada sin llamar a OpenAI.
-- Si hay API Key pero falta OPENAI_VECTOR_STORE_ID, TAMPOCO se llama al modelo (el
-  proyecto exige que el LLM responda basándose en los documentos del laboratorio; sin
-  Vector Store no hay documentos que recuperar).
+- Si `clase_detector` no resuelve a un Vector Store conocido, TAMPOCO se llama al modelo (el
+  proyecto exige que el LLM responda basándose en los documentos del equipo correcto; sin
+  saber cuál es ese equipo no hay documentos seguros que recuperar).
 - El LLM debe responder EXCLUSIVAMENTE con la información recuperada de los documentos.
   Si no hay información suficiente, se devuelve el mensaje estándar exigido por el proyecto.
 
@@ -40,7 +42,7 @@ import time
 from typing import Any, Dict, List, Optional
 
 from app.config import settings
-from app.services.equipo_manual_map import CLAVE_ATRIBUTO_VECTOR_STORE, resolver_atributo_equipo
+from app.services.equipo_manual_map import resolver_vector_store
 
 logger = logging.getLogger(__name__)
 
@@ -52,10 +54,6 @@ MENSAJE_SIN_API_KEY = (
     "El asistente inteligente aún no tiene una OpenAI API Key configurada. "
     "Configúrela desde la aplicación (Ajustes) o en el servidor. "
     "Consulte al docente o responsable del Laboratorio de Biotecnología."
-)
-
-MENSAJE_VECTOR_STORE_NO_CONFIGURADO = (
-    "El repositorio documental del Laboratorio de Biotecnología aún no está configurado."
 )
 
 MENSAJE_SOLICITUD_INVALIDA = (
@@ -110,18 +108,24 @@ class RagService:
                 "fuentes": [],
             }
 
-        if not settings.openai_vector_store_id:
-            # No se llama al modelo sin Vector Store: el proyecto exige que el asistente
-            # responda basándose en los documentos del laboratorio, nunca de forma libre.
+        # Resuelve el Vector Store DEDICADO de este equipo (arquitectura 1 equipo : 1 store,
+        # ver equipo_manual_map.py). clase_detector vacía/None/typo/clase desconocida ->
+        # vector_store_id es None -> NO se llama a OpenAI (nunca se busca en un store
+        # "general" ni se elige uno al azar): se responde el fallback estándar directamente.
+        vector_store_id = resolver_vector_store(clase_detector)
+        if not vector_store_id:
+            logger.info("[RAG] clase_detector=%s -> sin Vector Store asociado; no se consulta a OpenAI.",
+                        clase_detector or "(vacia)")
             return {
-                "respuesta": MENSAJE_VECTOR_STORE_NO_CONFIGURADO,
+                "respuesta": MENSAJE_SIN_INFORMACION,
                 "encontrado": False,
                 "fuentes": [],
             }
 
-        return self._consultar_openai(equipo, area, pregunta, clase_detector, api_key)
+        logger.info("[RAG] clase_detector=%s vector_store=%s", clase_detector, vector_store_id)
+        return self._consultar_openai(equipo, area, pregunta, vector_store_id, api_key)
 
-    def _consultar_openai(self, equipo: str, area: str, pregunta: str, clase_detector: str,
+    def _consultar_openai(self, equipo: str, area: str, pregunta: str, vector_store_id: str,
                            api_key: str) -> Dict[str, Any]:
         # Import perezoso: evita que el backend falle al arrancar si el paquete "openai"
         # no está instalado todavía.
@@ -141,24 +145,14 @@ class RagService:
         contexto = f"Área: {area or 'no especificada'}. Equipo: {equipo or 'no especificado'}."
         entrada_usuario = f"{contexto}\nPregunta: {pregunta}"
 
+        # Aislamiento real por equipo: file_search se restringe al Vector Store DEDICADO de
+        # este equipo (resuelto por el llamador, ver consultar()) — ya no hace falta ningún
+        # filtro de atributo adicional (arquitectura anterior de un store único compartido),
+        # porque este store no contiene manuales de ningún otro equipo.
         herramienta_file_search: Dict[str, Any] = {
             "type": "file_search",
-            "vector_store_ids": [settings.openai_vector_store_id],
+            "vector_store_ids": [vector_store_id],
         }
-
-        # Asociación REAL equipo -> manual: si la clase estable del detector tiene un manual
-        # verificado (ver equipo_manual_map.py), se restringe file_search a ESE archivo del
-        # Vector Store mediante un filtro de atributo (no un simple hint en el prompt: OpenAI
-        # excluye del resultado cualquier chunk de archivos que no cumplan el filtro). Si la
-        # clase viene vacía o todavía no tiene manual verificado, no se agrega "filters" y la
-        # búsqueda sigue siendo sobre todo el Vector Store, como hasta ahora.
-        atributo_equipo = resolver_atributo_equipo(clase_detector)
-        if atributo_equipo:
-            herramienta_file_search["filters"] = {
-                "type": "eq",
-                "key": CLAVE_ATRIBUTO_VECTOR_STORE,
-                "value": atributo_equipo,
-            }
 
         # Un fallo de conexión (p. ej. una resolución DNS intermitente hacia OpenAI) ocurre
         # ANTES de que la petición llegue a OpenAI, así que reintentarlo una sola vez es

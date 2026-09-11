@@ -11,9 +11,9 @@ class ChatRequest(BaseModel):
         default="",
         description=(
             "Clase estable del detector YOLO para el equipo seleccionado (labels.txt / "
-            "Equipo.claseDetector), NO el nombre bonito de 'equipo'. Se usa para restringir "
-            "file_search al manual correspondiente (ver equipo_manual_map.py); puede venir "
-            "vacía si no hay equipo seleccionado o si esa clase aún no tiene manual asociado."
+            "Equipo.claseDetector), NO el nombre bonito de 'equipo'. Se usa para resolver el "
+            "Vector Store dedicado de ese equipo (ver equipo_manual_map.py); puede venir "
+            "vacía si no hay equipo seleccionado o si esa clase no tiene Vector Store asociado."
         ),
     )
     pregunta: str = Field(..., min_length=1, description="Pregunta formulada por el usuario.")

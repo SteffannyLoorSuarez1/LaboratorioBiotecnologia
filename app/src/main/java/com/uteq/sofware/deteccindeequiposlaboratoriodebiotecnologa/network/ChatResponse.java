@@ -4,7 +4,7 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Respuesta del backend a POST /api/chat.
+ * Respuesta de OpenAI adaptada a la interfaz del asistente Bio.
  */
 public class ChatResponse {
 

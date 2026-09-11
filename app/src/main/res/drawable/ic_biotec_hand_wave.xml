@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Mano/brazo de saludo de BioTec: icono independiente (NO forma parte de ic_biotec_full.xml)
+     superpuesto junto al hombro derecho del robot y animado con una rotación pivotada en su
+     extremo inferior (ver NexoBioAnimador#iniciarSaludoMano, RotateAnimation con pivotY=100%),
+     para que oscile como una mano saludando. Se mantiene como un vector separado, muy simple
+     (manga + puño redondeado), deliberadamente para NO tener que tocar ni re-dibujar el brazo
+     ya existente del cuerpo (ic_biotec_full.xml): cero riesgo de desalinear ese diseño ya
+     validado. Mismos colores que el resto del robot (blanco + verde institucional). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="30dp"
+    android:height="46dp"
+    android:viewportWidth="15"
+    android:viewportHeight="23">
+
+    <!-- manga (conecta visualmente con el hombro del cuerpo) -->
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M5.7,13 H9.3 A1.2,1.2 0 0 1 10.5,14.2 V19.8 A1.2,1.2 0 0 1 9.3,21 H5.7 A1.2,1.2 0 0 1 4.5,19.8 V14.2 A1.2,1.2 0 0 1 5.7,13 Z" />
+
+    <!-- puño verde: separación sutil entre manga y mano -->
+    <path
+        android:fillColor="#1B5E3C"
+        android:pathData="M4.5,17.6 H10.5 V18.4 H4.5 Z" />
+
+    <!-- mano (mitón redondeado) -->
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M7.5,1.4 A5.1,5.1 0 1,1 7.49,1.4 Z" />
+</vector>

@@ -39,6 +39,41 @@ final class MarkdownFormatter {
                     + "|\\*(.+?)\\*"
                     + "|_(.+?)_");
 
+    /**
+     * Abreviaturas/unidades técnicas comunes en manuales de laboratorio que el motor de
+     * TextToSpeech del sistema tiende a leer mal en español (p. ej. "20V" se escuchaba como
+     * "veinte ve" en vez de "veinte voltios"): solo aplica a {@link #toSpeechText}, nunca al
+     * texto que se muestra en pantalla (ver {@link #toDisplaySpannable}), así que no cambia lo
+     * que el usuario lee, solo lo que escucha.
+     * <p>
+     * V/W/A exigen un dígito justo antes (con o sin espacio) para no confundir la letra suelta
+     * con otra cosa; el resto ya son tokens de 2-3 letras minúsculas poco ambiguos por sí solos
+     * en este contexto.
+     */
+    private static final Pattern[] PATRONES_UNIDADES = {
+            Pattern.compile("(?<=\\d)\\s?V\\b"),
+            Pattern.compile("(?<=\\d)\\s?W\\b"),
+            Pattern.compile("(?<=\\d)\\s?A\\b"),
+            Pattern.compile("°\\s?C\\b"),
+            Pattern.compile("\\bmL\\b"),
+            Pattern.compile("\\bmg\\b"),
+            Pattern.compile("\\bkg\\b"),
+            Pattern.compile("\\bcm\\b"),
+            Pattern.compile("\\bmm\\b"),
+            Pattern.compile("\\bmin\\b"),
+            Pattern.compile("\\brpm\\b", Pattern.CASE_INSENSITIVE),
+    };
+    private static final String[] REEMPLAZOS_UNIDADES = {
+            " voltios", " vatios", " amperios", " grados Celsius",
+            " mililitros", " miligramos", " kilogramos", " centímetros", " milímetros",
+            " minutos", " revoluciones por minuto",
+    };
+
+    /** "Biobase" (nombre de dos equipos del laboratorio) se leía con pronunciación de inglés al
+     * ir pegado; separado en dos palabras suena natural en español sin cambiar lo que se
+     * muestra en pantalla. */
+    private static final Pattern PATRON_BIOBASE = Pattern.compile("\\bBiobase\\b", Pattern.CASE_INSENSITIVE);
+
     private MarkdownFormatter() {
     }
 
@@ -122,7 +157,17 @@ final class MarkdownFormatter {
             }
             resultado.append(contenido);
         }
-        return resultado.toString().replaceAll("[ \\t]{2,}", " ").trim();
+        return pronunciarMejor(resultado.toString()).replaceAll("[ \\t]{2,}", " ").trim();
+    }
+
+    /** Expande unidades técnicas y separa "Biobase" para que TextToSpeech las pronuncie mejor en
+     * español (ver {@link #PATRONES_UNIDADES}/{@link #PATRON_BIOBASE}). Solo se usa para voz. */
+    private static String pronunciarMejor(String texto) {
+        String resultado = PATRON_BIOBASE.matcher(texto).replaceAll("Bio base");
+        for (int i = 0; i < PATRONES_UNIDADES.length; i++) {
+            resultado = PATRONES_UNIDADES[i].matcher(resultado).replaceAll(REEMPLAZOS_UNIDADES[i]);
+        }
+        return resultado;
     }
 
     private static boolean esFinDeFrase(char c) {

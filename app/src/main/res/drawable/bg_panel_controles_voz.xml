@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Panel inferior de controles de VozAsistenteActivity: esquinas superiores redondeadas (en
+     vez de un rectángulo recto) para una sensación de "hoja flotante" más moderna, tipo bottom
+     sheet. Un <shape> como background ya le da a la vista un outline correcto para que su
+     elevation/sombra siga la forma redondeada (no hace falta nada adicional). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/lab_surface" />
+    <corners
+        android:topLeftRadius="24dp"
+        android:topRightRadius="24dp" />
+</shape>

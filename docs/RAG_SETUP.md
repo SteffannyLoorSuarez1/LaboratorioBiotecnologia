@@ -1,18 +1,50 @@
 # Configuración del RAG (Retrieval-Augmented Generation)
 
-Esta guía explica cómo preparar el asistente inteligente para que responda usando
-exclusivamente los documentos del Laboratorio de Biotecnología de la UTEQ, mediante un
-único Vector Store de OpenAI.
+Esta guía explica cómo está configurado el asistente inteligente para que responda usando
+exclusivamente los documentos del Laboratorio de Biotecnología de la UTEQ.
 
-## Vector Store del proyecto
+> **ARQUITECTURA ACTUAL (vigente): un Vector Store POR EQUIPO.** La sección "Vector Store del
+> proyecto" de abajo describe la arquitectura ANTERIOR (un único Vector Store compartido) —
+> se conserva solo como referencia histórica. Ver "Arquitectura vigente" más abajo.
 
-Se usa **un único Vector Store** para todo el laboratorio:
+## Arquitectura vigente: un Vector Store por equipo
+
+Cada una de las 17 clases del detector (`clase_detector`, ver `labels.txt` / `ml/classes.json`)
+tiene su **propio** Vector Store de OpenAI, ya creado y poblado con el manual real de ese
+equipo. El mapeo completo (única fuente de verdad) vive en
+`backend/app/services/equipo_manual_map.py` (`EQUIPO_VECTOR_STORE_MAP`).
+
+Cuando Android envía `clase_detector`, el backend (`rag_service.py`) resuelve directamente su
+`vector_store_id` y restringe `file_search` a ESE único store — nunca consulta varios a la
+vez, nunca elige uno al azar, y no existe ningún Vector Store "general" de respaldo. Si
+`clase_detector` viene vacía, es `None`, o no corresponde a ninguna de las 17 clases
+conocidas, el backend NO llama a OpenAI: responde directamente el mensaje estándar de "sin
+información" (nunca busca en un store incorrecto ni inventa una respuesta).
+
+Para agregar o corregir el Vector Store de un equipo: actualizar la entrada correspondiente
+en `EQUIPO_VECTOR_STORE_MAP`. Los Vector Stores en sí (crearlos, subirles archivos) se
+gestionan a mano en https://platform.openai.com/storage/vector_stores — este backend nunca
+los crea ni los modifica.
+
+### Variable de entorno obsoleta: `OPENAI_VECTOR_STORE_ID`
+
+Con esta arquitectura, `OPENAI_VECTOR_STORE_ID` (en `backend/.env`) **ya no se usa** para
+resolver el Vector Store de una consulta por equipo — cada equipo usa el suyo propio, definido
+en código (`equipo_manual_map.py`), no en una variable de entorno. Tampoco es ya requisito
+para que `rag_configurado` sea `true` en `/health` (basta con `OPENAI_API_KEY`). Se conserva
+sin borrar en `Settings` (`backend/app/config.py`) solo por compatibilidad con despliegues
+existentes que aún la tengan configurada; dejarla puesta o quitarla del `.env` no cambia el
+comportamiento del RAG.
+
+## Vector Store del proyecto (arquitectura ANTERIOR — histórica, ya no vigente)
+
+Se usaba **un único Vector Store** para todo el laboratorio:
 
 ```
 Laboratorio_Biotecnologia_UTEQ
 ```
 
-Ahí se cargan documentos relacionados con las 3 áreas del laboratorio:
+Ahí se cargaban documentos relacionados con las 3 áreas del laboratorio:
 
 - Cultivo de tejidos vegetales
 - Microbiología
@@ -24,52 +56,25 @@ y, opcionalmente, documentos generales que no pertenecen a un área específica:
 - Bioseguridad
 - Normas del laboratorio
 
-El backend no distingue el Vector Store por área: todas las preguntas (con su contexto de
-`equipo`/`área`) consultan el mismo Vector Store, y es la búsqueda semántica de `file_search`
-la que recupera los fragmentos relevantes para cada pregunta.
+El backend no distinguía el Vector Store por área: todas las preguntas (con su contexto de
+`equipo`/`área`) consultaban el mismo Vector Store, y era la búsqueda semántica de
+`file_search` la que recuperaba los fragmentos relevantes para cada pregunta. Este esquema fue
+reemplazado por el de "Arquitectura vigente" de arriba.
 
-## Pasos (en https://platform.openai.com)
+## Puesta en marcha del servidor
 
-### 1. Abrir OpenAI Platform
-Ingresa a https://platform.openai.com con la cuenta de la organización del proyecto.
-
-### 2. Ir a Storage
-En el menú lateral, entra a **Storage** → **Files**
-(https://platform.openai.com/storage/files).
-
-### 3. Subir los documentos reales
-Sube ahí los PDF/documentos reales del laboratorio (manuales de equipos, guías de
-prácticas, protocolos, normas de seguridad/bioseguridad). No se suben documentos de
-ejemplo ni inventados.
-
-### 4. Crear un Vector Store
-Ve a **Storage** → **Vector stores** (https://platform.openai.com/storage/vector_stores) →
-**Create**. Nómbralo `Laboratorio_Biotecnologia_UTEQ`.
-
-### 5. Asociar los archivos
-Dentro del Vector Store creado, agrega los archivos subidos en el paso 3. Espera a que el
-estado de indexación de cada archivo sea **Completed** antes de probar el asistente.
-
-### 6. Copiar el `vector_store_id`
-En la página del Vector Store, copia su identificador. Tiene el formato:
+### 1. Configurar `backend/.env`
 
 ```
-vs_xxxxxxxxxxxxxxxxxxxxxxxx
+OPENAI_API_KEY=sk-...
 ```
 
-### 7. Configurar `backend/.env`
+`OPENAI_API_KEY` puede dejarse vacía en el servidor si cada usuario va a introducir su propia
+clave desde la app (ver más abajo); si se completa, actúa como clave por defecto del servidor.
+No hace falta configurar ningún `OPENAI_VECTOR_STORE_ID`: cada equipo ya usa el suyo propio,
+definido en código (ver "Arquitectura vigente" arriba).
 
-```
-OPENAI_API_KEY=
-OPENAI_VECTOR_STORE_ID=vs_xxxxxxxxxxxxxxxxxxxxxxxx
-```
-
-`OPENAI_API_KEY` puede dejarse vacía en el servidor si cada usuario va a introducir su
-propia clave desde la app (ver más abajo); si se completa, actúa como clave por defecto del
-servidor. El `OPENAI_VECTOR_STORE_ID`, en cambio, **siempre** se configura aquí, en el
-servidor — nunca se introduce desde Android.
-
-### 8. Reiniciar FastAPI
+### 2. Iniciar FastAPI
 
 ```bash
 cd backend
@@ -79,7 +84,7 @@ venv\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8000
 (Las variables de `.env` solo se leen al iniciar el proceso, por lo que hay que reiniciar
 uvicorn cada vez que cambie `backend/.env`.)
 
-### 9. Probar `/health`
+### 3. Probar `/health`
 
 ```bash
 curl http://127.0.0.1:8000/health
@@ -91,20 +96,21 @@ Respuesta esperada una vez configurado correctamente:
 {"status": "ok", "rag_configurado": true}
 ```
 
-`rag_configurado` es `true` solo cuando hay una API Key en el servidor **y**
-`OPENAI_VECTOR_STORE_ID` configurado. El backend arranca y `/health` responde igual aunque
-falte alguno de los dos.
+`rag_configurado` es `true` en cuanto hay una API Key en el servidor (ya no depende de ningún
+Vector Store "central"). El backend arranca y `/health` responde igual aunque falte la clave.
 
-### 10. Probar `/api/chat`
+### 4. Probar `/api/chat`
 
 ```bash
 curl -X POST http://127.0.0.1:8000/api/chat \
   -H "Content-Type: application/json" \
-  -d '{"equipo": "Autoclave", "area": "Área de microbiología", "clase_detector": "", "pregunta": "¿Para qué se usa este equipo?"}'
+  -d '{"equipo": "Horno de secado BIOBASE", "area": "", "clase_detector": "horno_secado_biobase", "pregunta": "¿Para qué se usa este equipo?"}'
 ```
 
 También puedes probarlo desde la documentación interactiva en
-`http://127.0.0.1:8000/docs`.
+`http://127.0.0.1:8000/docs`. Con `clase_detector` vacía, inexistente o mal escrita, la
+respuesta es siempre el mensaje estándar de "sin información" (nunca un error ni una
+respuesta inventada) — ver "Arquitectura vigente" arriba.
 
 ## Alternativa: API Key introducida desde la app (por usuario)
 
@@ -126,88 +132,23 @@ Prioridad al resolver qué API Key usar (ver `backend/app/services/rag_service.p
 3. Si ninguna existe: respuesta controlada indicando que el asistente aún no tiene clave
    configurada (sin error ni caída del backend).
 
-Si hay API Key (de cualquiera de las dos fuentes) pero falta `OPENAI_VECTOR_STORE_ID`,
-tampoco se llama al modelo: se responde "El repositorio documental del Laboratorio de
-Biotecnología aún no está configurado." (el proyecto exige que el asistente responda solo
-con base en los documentos, nunca de forma libre).
+Si `clase_detector` no resuelve a un Vector Store conocido (vacía, `None`, typo, o una clase
+fuera de las 17 activas), tampoco se llama al modelo: se responde el mensaje estándar de "sin
+información" (el proyecto exige que el asistente responda solo con base en los documentos del
+equipo correcto, nunca de forma libre ni con un store incorrecto).
 
-## Restricción por equipo: file_search limitado a un solo manual
+## Mapeo clase → Vector Store (las 17 clases activas)
 
-Cuando el usuario detecta/selecciona un equipo (cámara o ficha de equipo) y luego pregunta en
-el chat, Android envía también `clase_detector` (la clase estable del detector, ej.
-`bod_sensor`, NO el nombre bonito "BOD Sensor" — ver `Equipo.getClaseDetector()` /
-`labels.txt`). Si esa clase tiene un manual **verificado** en
-`backend/app/services/equipo_manual_map.py`, el backend agrega un filtro de atributo a la
-herramienta `file_search`:
-
-```python
-tools=[{
-    "type": "file_search",
-    "vector_store_ids": [OPENAI_VECTOR_STORE_ID],
-    "filters": {"type": "eq", "key": "equipo_clase", "value": "<valor del mapeo>"},
-}]
-```
-
-Esto es una restricción real de OpenAI (excluye chunks de cualquier archivo que no tenga ese
-atributo), no un simple texto agregado al prompt. Si la clase no está en el mapeo (o viene
-vacía), no se agrega `filters` y la búsqueda sigue siendo sobre todo el Vector Store, igual
-que antes.
-
-### Requisito: asignar el atributo al archivo en OpenAI
-
-El filtro solo funciona si el archivo del manual, DENTRO del Vector Store, tiene asignado el
-atributo `equipo_clase` con el mismo valor que aparece en `equipo_manual_map.py`. Eso se hace
-una vez por archivo, a mano (no lo hace la app ni el arranque del backend):
-
-```python
-from openai import OpenAI
-client = OpenAI(api_key="...")
-client.vector_stores.files.update(
-    vector_store_id="vs_...",
-    file_id="file_...",
-    attributes={"equipo_clase": "medidor_demanda_bioquimica_oxigeno"},
-)
-```
-
-Para encontrar el `file_id` y el nombre real de cada archivo:
-
-```python
-files = list(client.vector_stores.files.list(vector_store_id="vs_..."))
-for vsf in files:
-    f = client.files.retrieve(vsf.id)
-    print(vsf.id, f.filename, vsf.attributes)
-```
-
-### Estado actual del mapeo (modelo TFLite de 7 clases, 100 épocas — el integrado hoy)
-
-Los tres archivos siguientes ya tienen el atributo `equipo_clase` asignado en el Vector Store
-(verificado por nombre Y contenido real extraído por OpenAI, no solo por el nombre del PDF):
-
-| `clase_detector`            | Atributo `equipo_clase`                | Manual verificado (file_id)                                              | Estado |
-|------------------------------|-----------------------------------------|----------------------------------------------------------------------------|--------|
-| `bod_sensor`                  | `medidor_demanda_bioquimica_oxigeno`   | "Medidor demanda de bioquimica de oxigeno.pdf" (`file-4ALEV4gAa7H19KuGJsvJEQ`) — manual real de un RESPIROMETRIC Sensor | Activo |
-| `armario_calefactor_ule600`   | `armario_calefactor_ule600`            | "Memmert - Armario calefactor ULE 600.pdf" (`file-WZ4qbNPqkT1csKSwpmT4YV`)  | Activo |
-| `horno_secado`                | `horno_secado_biobase`                 | "Biobase incubadora  (1).pdf" (`file-TgwZrRxz6bL2soVnAKxAUN`) — contenido real: "Drying Oven/Incubator (Dual-use) - Biobase Biolab Co.,Ltd", modo "dry oven" 80-200°C | Activo |
-| `lux_fc_meter`, `medidor_multiparametro`, `electroforesis_owl_easycast`, `uv_pcr_workstation` | — | — | Sin manual asociado todavía |
-
-Nota sobre `bod_sensor`: el Vector Store tiene un SEGUNDO archivo con nombre casi idéntico
-("MEDIDOR DEMANDA BIOQUIMICA DE OXIGENO.pdf", en mayúsculas) del que OpenAI no pudo extraer
-texto (PDF escaneado sin OCR — "No text could be parsed..."). A propósito NO se usó ese
-archivo para el atributo: restringir file_search a un archivo sin texto indexable habría hecho
-que el asistente respondiera siempre "sin información", aunque el manual correcto sí exista.
-
-Nota sobre `horno_secado`: la verificación por contenido dio el resultado inverso al que
-sugerían los nombres de archivo. "Horno de secado de conveccion forzada redline.pdf" es un
-manual real pero de un horno **redLINE de BINDER GmbH** (otra marca), no BIOBASE. El manual
-BIOBASE real resultó ser "Biobase incubadora  (1).pdf" (uso dual horno de secado/incubadora).
-
-Las clases del **nuevo modelo de 6 equipos** (en entrenamiento) no se agregan aquí hasta que
-ese modelo esté validado e integrado.
+Fuente única de verdad: `backend/app/services/equipo_manual_map.py`
+(`EQUIPO_VECTOR_STORE_MAP`). No se duplica aquí para evitar que esta guía se desactualice del
+código — para ver el mapeo completo, abrir ese archivo directamente. Validado con pruebas
+automatizadas (`backend/tests/test_equipo_manual_map.py`): exactamente 17 entradas, sin IDs
+vacíos ni duplicados, y las 17 clases de `labels.txt`/`ml/classes.json` presentes.
 
 ## Reglas que sigue el asistente
 
-- Responde exclusivamente con información recuperada de los documentos indexados en
-  `Laboratorio_Biotecnologia_UTEQ`.
+- Responde exclusivamente con información recuperada del Vector Store del equipo en contexto
+  (`clase_detector`) — nunca de otro equipo ni de un store "general".
 - No inventa datos técnicos ni usa conocimiento general para completar información técnica
   faltante.
 - Puede responder sobre: función, componentes, operación, seguridad, EPP, riesgos,

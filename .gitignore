@@ -1,22 +1,32 @@
+# Android / Gradle
 *.iml
-.gradle
+.gradle/
+/build
+**/build/
 /local.properties
+local.properties
+/captures
+.externalNativeBuild
+.cxx
+*.apk
+*.aab
+
+# IDE (solo se ignoran los archivos de caché/estado local; el resto de .idea/ SÍ se
+# versiona a propósito: gradle.xml, runConfigurations.xml, vcs.xml, etc.)
 /.idea/caches
 /.idea/libraries
 /.idea/modules.xml
 /.idea/workspace.xml
 /.idea/navEditor.xml
 /.idea/assetWizardSettings.xml
+
 .DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
-local.properties
 
 # Backend (FastAPI) — nunca subir secretos ni entornos virtuales
 backend/.env
 **/.env
+**/.env.*
+!**/.env.example
 backend/venv/
 **/venv/
 **/.venv/
@@ -24,10 +34,14 @@ backend/__pycache__/
 **/__pycache__/
 *.pyc
 
+# Secretos
+*.key
+*.pem
+
 # ML (ver ml/README.md) — SI se versionan: classes.json, data.yaml, labels.txt,
-# scripts/, documentación, y las etiquetas .txt (dataset/labels/). NO se versionan
-# fotografías (pesan mucho y ml/raw/ nunca debe depender de git) ni artefactos
-# generados/entrenados (se regeneran con los scripts).
+# scripts/, documentación, y las etiquetas .txt del dataset antiguo (ml/dataset/labels/).
+# NO se versionan fotografías (pesan mucho) ni artefactos generados/entrenados (se
+# regeneran con los scripts).
 ml/venv/
 ml/venv_labelimg/
 ml/raw/**/*.jpg
@@ -48,9 +62,27 @@ ml/models/*.pt
 ml/models/*.tflite
 ml/models/preliminary/*.pt
 ml/colab_training_package.zip
+ml/dataset_final_colab.zip
+ml/*.zip
 ml/inference_samples/*.jpg
 ml/inference_samples/*.jpeg
 ml/inference_samples/*.png
 
-# Modelo entrenado en Android: solo existe cuando es real (ver docs/YOLO_SETUP.md)
-app/src/main/assets/best.tflite
+# Dataset final (17 clases): miles de fotos + su empaquetado para Colab, no caben en un
+# repositorio git. Las fotos originales quedan en el equipo local; el dataset se puede
+# reconstruir con los scripts de ml/scripts/ a partir de ml/raw/. Las anotaciones .txt
+# tampoco se versionan aquí porque están 1:1 con las fotos excluidas.
+ml/dataset_final/images/
+ml/dataset_final/labels/
+
+# Fotos pendientes de etiquetar para clases nuevas (aún no forman parte de dataset_final)
+ml/pendiente_etiquetado/**/images/
+ml/pendiente_etiquetado/**/labels/
+
+# Backup local del modelo anterior (7 clases) hecho antes de migrar a 17 clases: binario
+# pesado, no debe subirse al repo (ver informe de migración del detector).
+ml/backups_modelos/
+
+# Artefactos temporales
+*.tmp
+*.log

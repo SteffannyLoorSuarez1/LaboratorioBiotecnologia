@@ -1,6 +1,7 @@
 {
   "_comment": "FUENTE UNICA DE VERDAD de las clases del detector YOLO. NUNCA reordenar ni reutilizar class_id existentes. Las nuevas clases se agregan siempre con el siguiente class_id disponible. Este archivo es leido por todos los scripts de ml/ (via scripts/common.py) para generar data.yaml y labels.txt, evitando listas duplicadas.",
-  "version": 1,
+  "_comment_migracion_17_clases": "Migracion YOLO11n(7 clases) -> YOLO11m(17 clases), best (1).tflite entrenado externamente (Colab/Drive, ver resultados_finales_yolo11m_17clases.txt). name_internal, class_id y el orden son DEFINITIVOS y coinciden exactamente con ml/dataset_final/data.yaml. name_display = name_internal y area_id = 'area_pendiente_clasificacion' son PLACEHOLDERS deliberados: la curacion de nombres amigables y areas reales queda para una etapa posterior (actualizacion de LabRepository), fuera del alcance de esta migracion del detector. photos_approx = conteo real de instancias etiquetadas en ml/dataset_final/labels (train+val+test).",
+  "version": 2,
   "areas": [
     {
       "area_id": "area_cultivo_tejidos",
@@ -13,64 +14,148 @@
     {
       "area_id": "area_biologia_molecular",
       "nombre": "Área de biología molecular"
+    },
+    {
+      "area_id": "area_pendiente_clasificacion",
+      "nombre": "Pendiente de asignar área real (clases del modelo de 17 clases, migración en curso)"
     }
   ],
   "classes": [
     {
       "class_id": 0,
-      "name_internal": "bod_sensor",
-      "name_display": "BOD Sensor",
-      "area_id": "area_cultivo_tejidos",
-      "raw_folder": "bod_sensor",
-      "photos_approx": 30
+      "name_internal": "autoclave_vapor_mesa_gemmy_sturdy",
+      "name_display": "autoclave_vapor_mesa_gemmy_sturdy",
+      "area_id": "area_pendiente_clasificacion",
+      "raw_folder": "autoclave_vapor_mesa_gemmy_sturdy",
+      "photos_approx": 138
     },
     {
       "class_id": 1,
-      "name_internal": "lux_fc_meter",
-      "name_display": "Broad Range LUX/FC Meter",
-      "area_id": "area_cultivo_tejidos",
-      "raw_folder": "lux_fc_meter",
-      "photos_approx": 32
+      "name_internal": "cabina_flujo_laminar_mini_c4",
+      "name_display": "cabina_flujo_laminar_mini_c4",
+      "area_id": "area_pendiente_clasificacion",
+      "raw_folder": "cabina_flujo_laminar_mini_c4",
+      "photos_approx": 130
     },
     {
       "class_id": 2,
-      "name_internal": "medidor_multiparametro",
-      "name_display": "Medidor multiparámetro electroquímico de mesa",
-      "area_id": "area_cultivo_tejidos",
-      "raw_folder": "medidor_multiparametro",
-      "photos_approx": 26
+      "name_internal": "centrifuga_laboratorio_ohaus",
+      "name_display": "centrifuga_laboratorio_ohaus",
+      "area_id": "area_pendiente_clasificacion",
+      "raw_folder": "centrifuga_laboratorio_ohaus",
+      "photos_approx": 108
     },
     {
       "class_id": 3,
-      "name_internal": "electroforesis_owl_easycast",
-      "name_display": "Sistema de electroforesis horizontal Thermo Scientific Owl EasyCast B1-BP",
-      "area_id": "area_cultivo_tejidos",
-      "raw_folder": "electroforesis_owl_easycast",
-      "photos_approx": 20
+      "name_internal": "medidor_mesa_electroquimica_ohaus",
+      "name_display": "medidor_mesa_electroquimica_ohaus",
+      "area_id": "area_pendiente_clasificacion",
+      "raw_folder": "medidor_mesa_electroquimica_ohaus",
+      "photos_approx": 99
     },
     {
       "class_id": 4,
-      "name_internal": "armario_calefactor_ule600",
-      "name_display": "Armario calefactor ULE 600",
-      "area_id": "area_microbiologia",
-      "raw_folder": "armario_calefactor_ule600",
-      "photos_approx": 34
+      "name_internal": "termociclador_miniamp_plus",
+      "name_display": "termociclador_miniamp_plus",
+      "area_id": "area_pendiente_clasificacion",
+      "raw_folder": "termociclador_miniamp_plus",
+      "photos_approx": 120
     },
     {
       "class_id": 5,
-      "name_internal": "horno_secado",
-      "name_display": "Horno de secado",
-      "area_id": "area_microbiologia",
-      "raw_folder": "horno_secado",
-      "photos_approx": 32
+      "name_internal": "bano_maria_memmert",
+      "name_display": "bano_maria_memmert",
+      "area_id": "area_pendiente_clasificacion",
+      "raw_folder": "bano_maria_memmert",
+      "photos_approx": 184
     },
     {
       "class_id": 6,
-      "name_internal": "uv_pcr_workstation",
-      "name_display": "UV PCR Workstation",
-      "area_id": "area_microbiologia",
-      "raw_folder": "uv_pcr_workstation",
-      "photos_approx": 6
+      "name_internal": "cubeta_electroforesis_horizontal_gel",
+      "name_display": "cubeta_electroforesis_horizontal_gel",
+      "area_id": "area_pendiente_clasificacion",
+      "raw_folder": "cubeta_electroforesis_horizontal_gel",
+      "photos_approx": 138
+    },
+    {
+      "class_id": 7,
+      "name_internal": "espectrofotometro_visible_digital_unico",
+      "name_display": "espectrofotometro_visible_digital_unico",
+      "area_id": "area_pendiente_clasificacion",
+      "raw_folder": "espectrofotometro_visible_digital_unico",
+      "photos_approx": 143
+    },
+    {
+      "class_id": 8,
+      "name_internal": "horno_secado_conveccion_forzada_redline",
+      "name_display": "horno_secado_conveccion_forzada_redline",
+      "area_id": "area_pendiente_clasificacion",
+      "raw_folder": "horno_secado_conveccion_forzada_redline",
+      "photos_approx": 154
+    },
+    {
+      "class_id": 9,
+      "name_internal": "medidor_demanda_bioquimica_oxigeno",
+      "name_display": "medidor_demanda_bioquimica_oxigeno",
+      "area_id": "area_pendiente_clasificacion",
+      "raw_folder": "medidor_demanda_bioquimica_oxigeno",
+      "photos_approx": 148
+    },
+    {
+      "class_id": 10,
+      "name_internal": "balanza_analitica_ohaus",
+      "name_display": "balanza_analitica_ohaus",
+      "area_id": "area_pendiente_clasificacion",
+      "raw_folder": "balanza_analitica_ohaus",
+      "photos_approx": 155
+    },
+    {
+      "class_id": 11,
+      "name_internal": "camara_incubacion_uv_prc_workstation",
+      "name_display": "camara_incubacion_uv_prc_workstation",
+      "area_id": "area_pendiente_clasificacion",
+      "raw_folder": "camara_incubacion_uv_prc_workstation",
+      "photos_approx": 132
+    },
+    {
+      "class_id": 12,
+      "name_internal": "estufa_laboratorio_doble_puerta",
+      "name_display": "estufa_laboratorio_doble_puerta",
+      "area_id": "area_pendiente_clasificacion",
+      "raw_folder": "estufa_laboratorio_doble_puerta",
+      "photos_approx": 131
+    },
+    {
+      "class_id": 13,
+      "name_internal": "horno_secado_biobase",
+      "name_display": "horno_secado_biobase",
+      "area_id": "area_pendiente_clasificacion",
+      "raw_folder": "horno_secado_biobase",
+      "photos_approx": 151
+    },
+    {
+      "class_id": 14,
+      "name_internal": "incubador_agitacion_orbital_incu_shaker",
+      "name_display": "incubador_agitacion_orbital_incu_shaker",
+      "area_id": "area_pendiente_clasificacion",
+      "raw_folder": "incubador_agitacion_orbital_incu_shaker",
+      "photos_approx": 146
+    },
+    {
+      "class_id": 15,
+      "name_internal": "microscopio_boeco",
+      "name_display": "microscopio_boeco",
+      "area_id": "area_pendiente_clasificacion",
+      "raw_folder": "microscopio_boeco",
+      "photos_approx": 96
+    },
+    {
+      "class_id": 16,
+      "name_internal": "camara_seguridad_biologica_biobase",
+      "name_display": "camara_seguridad_biologica_biobase",
+      "area_id": "area_pendiente_clasificacion",
+      "raw_folder": "camara_seguridad_biologica_biobase",
+      "photos_approx": 80
     }
   ]
 }

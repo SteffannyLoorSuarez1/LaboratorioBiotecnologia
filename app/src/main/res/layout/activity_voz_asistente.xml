@@ -1,0 +1,294 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_voz_screen_gradient"
+    tools:context=".chat.VozAsistenteActivity">
+
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbarVoz"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:background="@color/lab_primary"
+        app:title="@string/nexobio_nombre"
+        app:titleTextColor="@color/white"
+        app:navigationIcon="@drawable/ic_arrow_back"
+        app:navigationIconTint="@color/white"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Chip discreto de contexto: "Consultando sobre: [equipo]" (oculto si no hay equipo). -->
+    <TextView
+        android:id="@+id/textConsultandoSobre"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:layout_marginHorizontal="16dp"
+        android:background="@drawable/bg_context_card"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:paddingHorizontal="14dp"
+        android:paddingVertical="7dp"
+        android:textColor="@color/lab_text_primary"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        app:layout_constrainedWidth="true"
+        app:layout_constraintTop_toBottomOf="@id/toolbarVoz"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintWidth_max="320dp"
+        tools:text="Consultando sobre: Medidor mesa electroquímica Ohaus" />
+
+    <!-- Sombra de apoyo, DETRÁS del robot (declarada antes en el XML = se dibuja primero):
+         ver bg_biotec_shadow.xml — puramente decorativa, no toca el vector del personaje. -->
+    <View
+        android:id="@+id/viewSombraBioTec"
+        android:layout_width="0dp"
+        android:layout_height="16dp"
+        android:background="@drawable/bg_biotec_shadow"
+        app:layout_constraintWidth_percent="0.3"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="@id/imageBioTecCompleto"
+        app:layout_constraintVertical_bias="1" />
+
+    <!-- BioTec de cuerpo entero: ancho como porcentaje de la pantalla (nunca se corta ni
+         desborda en teléfonos angostos) y alto calculado por relación de aspecto del vector
+         (26:40), nunca con dimensiones fijas grandes. -->
+    <ImageView
+        android:id="@+id/imageBioTecCompleto"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:contentDescription="@string/nexobio_nombre"
+        android:src="@drawable/ic_biotec_full"
+        app:layout_constraintDimensionRatio="H,26:40"
+        app:layout_constraintWidth_percent="0.46"
+        app:layout_constraintHeight_max="280dp"
+        app:layout_constraintTop_toBottomOf="@id/textConsultandoSobre"
+        app:layout_constraintBottom_toTopOf="@id/textEstadoVoz"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintVertical_bias="0.5" />
+
+    <!-- Mano de saludo (ver NexoBioAnimador, estado SALUDANDO): oculta por defecto (GONE, no
+         ocupa espacio ni se mide de más); solo aparece junto al hombro derecho del robot
+         mientras BioTec saluda al abrir esta pantalla. Vector propio e independiente del cuerpo
+         (ic_biotec_hand_wave.xml), posicionado por porcentaje igual que el resto de esta
+         pantalla para que no se desalinee en distintos tamaños/densidades de pantalla. -->
+    <ImageView
+        android:id="@+id/imageBioTecManoSaludo"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone"
+        android:contentDescription="@null"
+        android:src="@drawable/ic_biotec_hand_wave"
+        app:layout_constraintDimensionRatio="H,15:23"
+        app:layout_constraintWidth_percent="0.13"
+        app:layout_constraintTop_toTopOf="@id/imageBioTecCompleto"
+        app:layout_constraintBottom_toTopOf="@id/imageBioTecCompleto"
+        app:layout_constraintVertical_bias="0.32"
+        app:layout_constraintStart_toEndOf="@id/imageBioTecCompleto"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.1"
+        tools:visibility="visible" />
+
+    <!-- Estado efímero (IDLE/LISTENING/PROCESSING/ERROR). Se oculta mientras se muestra una
+         respuesta ya recibida (ver cardRespuesta). -->
+    <TextView
+        android:id="@+id/textEstadoVoz"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="28dp"
+        android:layout_marginBottom="10dp"
+        android:gravity="center"
+        android:textColor="@color/lab_text_primary"
+        android:textSize="17sp"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toTopOf="@id/scrollRespuesta"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        tools:text="Puedes preguntarme sobre este equipo" />
+
+    <!-- Botón de reintentar, solo visible tras un ERROR con pregunta pendiente. -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/botonReintentar"
+        style="@style/Widget.Material3.Button.TonalButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="10dp"
+        android:text="@string/voz_reintentar"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/scrollRespuesta"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        tools:visibility="visible" />
+
+    <!-- Última respuesta recibida (Markdown renderizado, igual criterio que el chat escrito),
+         con sus fuentes si las hay. Reemplaza a textEstadoVoz mientras hay una respuesta vigente
+         en pantalla; vuelve a cederle el lugar en cuanto el usuario habla de nuevo. -->
+    <ScrollView
+        android:id="@+id/scrollRespuesta"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginHorizontal="16dp"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/imageBioTecCompleto"
+        app:layout_constraintBottom_toTopOf="@id/panelControlesVoz"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHeight_max="160dp"
+        tools:visibility="visible">
+
+        <LinearLayout
+            android:id="@+id/cardRespuesta"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_chat_bubble_assistant"
+            android:orientation="vertical"
+            android:padding="14dp">
+
+            <TextView
+                android:id="@+id/textRespuestaVoz"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:lineSpacingExtra="2dp"
+                android:textColor="@color/lab_text_primary"
+                android:textSize="15sp"
+                tools:text="El medidor de mesa electroquímico Ohaus se usa para medir pH, conductividad y otros parámetros de una muestra líquida." />
+
+            <LinearLayout
+                android:id="@+id/contenedorFuentesVoz"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginBottom="8dp"
+                    android:background="@color/lab_context_card_border" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/chat_fuentes"
+                    android:textColor="@color/lab_secondary"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/textFuentesVoz"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:textColor="@color/lab_text_secondary"
+                    android:textSize="12sp"
+                    tools:text="• manual_ohaus.pdf — pág. 2" />
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- Panel inferior de controles: silenciar | micrófono grande, más el botón de chat escrito. -->
+    <LinearLayout
+        android:id="@+id/panelControlesVoz"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_panel_controles_voz"
+        android:elevation="12dp"
+        android:orientation="vertical"
+        android:paddingTop="14dp"
+        android:paddingBottom="10dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <!-- Onda de voz: barras que reaccionan en vivo al volumen mientras se escucha (ver
+             OndaAudioView / SpeechRecognitionManager#onRmsChanged). Oculta por defecto (GONE);
+             solo visible durante el estado ESCUCHANDO. -->
+        <com.uteq.sofware.deteccindeequiposlaboratoriodebiotecnologa.chat.OndaAudioView
+            android:id="@+id/ondaAudioVoz"
+            android:layout_width="140dp"
+            android:layout_height="28dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="8dp"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="32dp">
+
+            <ImageButton
+                android:id="@+id/botonSilenciar"
+                android:layout_width="46dp"
+                android:layout_height="46dp"
+                android:layout_weight="1"
+                android:layout_gravity="center"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/voz_silenciar"
+                android:src="@drawable/ic_stop"
+                app:tint="@color/lab_text_secondary" />
+
+            <!-- El micrófono va dentro de un FrameLayout más grande que él mismo para poder
+                 mostrar detrás un anillo de pulso (mismo criterio que viewPulsoNexoBio del chat
+                 escrito, ver bg_nexobio_pulso.xml) mientras se está escuchando — puramente
+                 visual, VozAsistenteActivity lo anima/oculta directamente (no a través de
+                 NexoBioAnimador, cuyo anilloPulso también pulsa en HABLANDO: aquí solo debe
+                 pulsar mientras se escucha, nunca mientras BioTec habla). -->
+            <FrameLayout
+                android:layout_width="92dp"
+                android:layout_height="92dp"
+                android:layout_marginHorizontal="10dp">
+
+                <View
+                    android:id="@+id/viewPulsoMicVoz"
+                    android:layout_width="92dp"
+                    android:layout_height="92dp"
+                    android:alpha="0"
+                    android:background="@drawable/bg_nexobio_pulso" />
+
+                <ImageButton
+                    android:id="@+id/botonMicrofonoVoz"
+                    android:layout_width="72dp"
+                    android:layout_height="72dp"
+                    android:layout_gravity="center"
+                    android:background="@drawable/bg_mic_button_voz"
+                    android:contentDescription="@string/voz_hablar"
+                    android:elevation="4dp"
+                    android:padding="20dp"
+                    android:src="@drawable/ic_mic"
+                    app:tint="@color/white" />
+            </FrameLayout>
+
+            <!-- Espaciador simétrico al botón de silenciar, para que el micrófono quede
+                 realmente centrado sin depender de anchos fijos. -->
+            <View
+                android:layout_width="46dp"
+                android:layout_height="46dp"
+                android:layout_weight="1" />
+        </LinearLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/botonChatear"
+            style="@style/Widget.Material3.Button.TextButton.Icon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginTop="6dp"
+            android:text="@string/voz_boton_chatear"
+            app:icon="@drawable/ic_chat"
+            app:iconGravity="textStart"
+            app:iconTint="@color/lab_primary" />
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

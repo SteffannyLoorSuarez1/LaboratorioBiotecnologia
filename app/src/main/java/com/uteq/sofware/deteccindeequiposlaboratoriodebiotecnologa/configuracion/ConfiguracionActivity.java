@@ -1,114 +1,83 @@
 package com.uteq.sofware.deteccindeequiposlaboratoriodebiotecnologa.configuracion;
 
 import android.os.Bundle;
-import android.text.TextUtils;
-import android.view.View;
-import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
-
+import android.view.View;
+import com.google.android.material.textfield.TextInputEditText;
+import com.uteq.sofware.deteccindeequiposlaboratoriodebiotecnologa.security.SecureConfigManager;
 import androidx.appcompat.app.AppCompatActivity;
-
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
-import com.google.android.material.textfield.TextInputEditText;
-
 import com.uteq.sofware.deteccindeequiposlaboratoriodebiotecnologa.R;
-import com.uteq.sofware.deteccindeequiposlaboratoriodebiotecnologa.security.SecureConfigManager;
+import com.uteq.sofware.deteccindeequiposlaboratoriodebiotecnologa.network.HealthRepository;
 import com.uteq.sofware.deteccindeequiposlaboratoriodebiotecnologa.util.InsetsUtil;
 
-/**
- * Permite al usuario introducir su propia OpenAI API Key para el asistente inteligente.
- * <p>
- * La clave se guarda cifrada en el dispositivo mediante {@link SecureConfigManager} y nunca
- * se muestra completa, se registra en Logcat, ni se envía a ningún destino salvo el backend
- * propio de la aplicación (en el encabezado {@code X-OpenAI-API-Key} de cada consulta del
- * chat). Android nunca llama directamente a la API de OpenAI.
- */
+/** Estado de la conexión de Bio; utiliza la credencial incluida en la compilación. */
 public class ConfiguracionActivity extends AppCompatActivity {
-
-    private SecureConfigManager secureConfigManager;
-
-    private TextInputEditText editTextApiKey;
-    private TextView textEstadoApiKey;
-    private ImageView imageEstadoApiKey;
-    private MaterialButton botonEliminarClave;
+    private SecureConfigManager claves;
+    private TextInputEditText entradaClave;
+    private TextView origenClave;
+    private View restaurar;
+    private TextView estado;
+    private MaterialButton comprobar;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_configuracion);
-
-        secureConfigManager = new SecureConfigManager(this);
-
         InsetsUtil.aplicarInsetsBarraSistema(findViewById(R.id.root), false, true, false, true);
-
-        MaterialToolbar toolbar = findViewById(R.id.toolbarConfiguracion);
-        toolbar.setNavigationOnClickListener(v -> finish());
-
-        editTextApiKey = findViewById(R.id.editTextApiKey);
-        textEstadoApiKey = findViewById(R.id.textEstadoApiKey);
-        imageEstadoApiKey = findViewById(R.id.imageEstadoApiKey);
-        botonEliminarClave = findViewById(R.id.botonEliminarClave);
-
-        MaterialButton botonGuardar = findViewById(R.id.botonGuardarConfiguracion);
-        botonGuardar.setOnClickListener(v -> guardarApiKey());
-        botonEliminarClave.setOnClickListener(v -> eliminarApiKey());
-
-        actualizarEstadoUI();
+        ((MaterialToolbar) findViewById(R.id.toolbarConfiguracion)).setNavigationOnClickListener(v -> finish());
+        estado = findViewById(R.id.textEstadoApiKey);
+        comprobar = findViewById(R.id.botonGuardarConfiguracion);
+        comprobar.setOnClickListener(v -> comprobarServicio());
+        claves = new SecureConfigManager(this);
+        entradaClave = findViewById(R.id.editTextApiKey);
+        origenClave = findViewById(R.id.textOrigenClave);
+        restaurar = findViewById(R.id.botonRestaurarClave);
+        findViewById(R.id.botonGuardarClave).setOnClickListener(v -> {
+            String clave = entradaClave.getText() == null ? "" : entradaClave.getText().toString().trim();
+            if (clave.isEmpty() || clave.chars().anyMatch(Character::isWhitespace)) {
+                entradaClave.setError(getString(R.string.config_api_key_vacia));
+                return;
+            }
+            claves.saveApiKey(clave);
+            entradaClave.setText("");
+            actualizarOrigen();
+            Toast.makeText(this, R.string.config_guardado_exitoso, Toast.LENGTH_SHORT).show();
+            comprobarServicio();
+        });
+        restaurar.setOnClickListener(v -> {
+            claves.deleteApiKey();
+            entradaClave.setText("");
+            actualizarOrigen();
+            comprobarServicio();
+        });
+        actualizarOrigen();
+        comprobarServicio();
     }
 
-    private void guardarApiKey() {
-        CharSequence texto = editTextApiKey.getText();
-        String apiKey = texto == null ? "" : texto.toString().trim();
-
-        if (TextUtils.isEmpty(apiKey)) {
-            Toast.makeText(this, R.string.config_api_key_vacia, Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        secureConfigManager.saveApiKey(apiKey);
-        editTextApiKey.setText("");
-        Toast.makeText(this, R.string.config_guardado_exitoso, Toast.LENGTH_SHORT).show();
-        actualizarEstadoUI();
+    private void actualizarOrigen() {
+        origenClave.setText(claves.hasApiKey() ? R.string.bio_clave_personal : R.string.bio_clave_original);
+        restaurar.setVisibility(claves.hasApiKey() ? View.VISIBLE : View.GONE);
     }
 
-    private void eliminarApiKey() {
-        secureConfigManager.deleteApiKey();
-        editTextApiKey.setText("");
-        Toast.makeText(this, R.string.config_eliminado_exitoso, Toast.LENGTH_SHORT).show();
-        actualizarEstadoUI();
+    private void comprobarServicio() {
+        comprobar.setEnabled(false);
+        estado.setText(R.string.bio_comprobando);
+        new HealthRepository(this).consultarEstado(new HealthRepository.Callback() {
+            @Override public void onResultado(boolean disponible) {
+                mostrarEstado(disponible ? R.string.bio_disponible : R.string.bio_no_configurado);
+            }
+            @Override public void onError() {
+                mostrarEstado(R.string.chat_error_red);
+            }
+        });
     }
 
-    private void actualizarEstadoUI() {
-        boolean configurada = secureConfigManager.hasApiKey();
-
-        if (configurada) {
-            String enmascarada = enmascarar(secureConfigManager.getApiKey());
-            textEstadoApiKey.setText(getString(R.string.config_estado_configurada) + " (" + enmascarada + ")");
-            imageEstadoApiKey.setImageResource(R.drawable.ic_check_circle);
-            imageEstadoApiKey.setImageTintList(android.content.res.ColorStateList.valueOf(
-                    getResources().getColor(R.color.lab_primary, getTheme())));
-            botonEliminarClave.setVisibility(View.VISIBLE);
-        } else {
-            textEstadoApiKey.setText(R.string.config_estado_no_configurada);
-            imageEstadoApiKey.setImageResource(R.drawable.ic_warning);
-            imageEstadoApiKey.setImageTintList(android.content.res.ColorStateList.valueOf(
-                    getResources().getColor(R.color.lab_warning, getTheme())));
-            botonEliminarClave.setVisibility(View.GONE);
-        }
-    }
-
-    /**
-     * Nunca se debe mostrar (ni registrar) la clave completa. Como máximo se muestra el
-     * prefijo y los últimos 4 caracteres, por ejemplo: {@code sk-••••••••••••••••AB12}.
-     */
-    private String enmascarar(String apiKey) {
-        if (apiKey == null || apiKey.length() < 8) {
-            return "••••••••";
-        }
-        String inicio = apiKey.substring(0, Math.min(3, apiKey.length()));
-        String fin = apiKey.substring(apiKey.length() - 4);
-        return inicio + "••••••••••••••••" + fin;
+    private void mostrarEstado(int mensaje) {
+        if (isFinishing() || isDestroyed()) return;
+        estado.setText(mensaje);
+        comprobar.setEnabled(true);
     }
 }

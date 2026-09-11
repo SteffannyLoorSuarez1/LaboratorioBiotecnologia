@@ -19,8 +19,9 @@ import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import com.uteq.sofware.deteccindeequiposlaboratoriodebiotecnologa.model.DetectionResult;
@@ -57,13 +58,30 @@ public class YoloTfliteDetector implements DetectorService {
     /** TEMPORAL: logs de diagnostico de la cadena de coordenadas (ver LABELING/registro de
      * depuracion pedido). Poner en false (o borrar los bloques `if (DEBUG_LOGS)`) una vez
      * confirmado en dispositivo fisico que las cajas quedan correctamente alineadas. */
-    private static final boolean DEBUG_LOGS = true;
+    private static final boolean DEBUG_LOGS = false;
     private static final int DEBUG_LOG_MAX_CANDIDATOS = 5;
 
     private Interpreter interpreter;
     private List<String> classNames;
     private final boolean modeloDisponible;
     private final String errorCarga;
+
+    /** CAUSA RAIZ REAL de los cierres nativos (SIGSEGV dentro de libLiteRt.so) observados al
+     * salir de esta pantalla justo tras seleccionar un equipo, confirmados en Logcat de
+     * dispositivo físico (tombstone: "pool-4-thread-1 ... libLiteRt.so"): {@link #detectar} solo
+     * comprobaba {@code interpreter == null} al PRINCIPIO del método, pero entre esa comprobación
+     * y {@code interpreter.run(...)} no había ninguna exclusión mutua con {@link #liberar()}. El
+     * intento anterior de evitar esto (ver {@code DeteccionActivity.onDestroy()}: apagar el
+     * executor y esperar hasta 500ms antes de liberar) reduce la probabilidad pero NO la elimina:
+     * si una inferencia tarda más de esos 500ms (frecuente en SoCs de gama media/baja, como el
+     * que reportó el crash), {@code awaitTermination} devuelve {@code false} sin cancelar nada y
+     * el código de todas formas cierra el intérprete mientras el hilo de análisis sigue dentro de
+     * {@code Interpreter.run()} — un cierre/uso nativo concurrente clásico. Este lock hace que
+     * {@link #liberar()} NUNCA pueda cerrar el intérprete mientras {@link #detectar} lo está
+     * usando (y viceversa), sin importar cuánto tarde la inferencia: es la garantía real, la
+     * espera con tope de tiempo en {@code DeteccionActivity} queda solo como optimización para
+     * evitar tener que esperar aquí en el caso común. */
+    private final Object interpreterLock = new Object();
 
     public YoloTfliteDetector(Context context) {
         boolean archivosPresentes = existeEnAssets(context, MODEL_FILE) && existeEnAssets(context, LABELS_FILE);
@@ -111,49 +129,79 @@ public class YoloTfliteDetector implements DetectorService {
 
     @Override
     public List<DetectionResult> detectar(Bitmap frame) {
-        // interpreter==null cubre la ventana entre liberar() (llamado desde onDestroy de la
-        // Activity) y que este hilo de análisis termine: modeloDisponible es final y no se
-        // actualiza en liberar(), así que por sí solo no basta para detectar ese caso (ver
-        // DeteccionActivity.onDestroy() para la corrección de fondo del orden de apagado).
-        if (!modeloDisponible || frame == null || interpreter == null) {
+        if (!modeloDisponible || frame == null) {
             return Collections.emptyList();
         }
-        try {
-            LetterboxResult lb = letterbox(frame);
-            float[][][][] entrada = bitmapToNchwTensor(lb.bitmap);
-            lb.bitmap.recycle();
-
-            float[][][] salida = new float[1][4 + classNames.size()][numAnclas()];
-            interpreter.run(entrada, salida);
-
-            if (DEBUG_LOGS) {
-                Log.d(TAG, "[DEBUG] bitmap analizado: " + frame.getWidth() + "x" + frame.getHeight()
-                        + "  letterbox: escala=" + lb.escala + " padLeft=" + lb.padLeft + " padTop=" + lb.padTop);
+        // TODO el uso del interprete (incluida la inferencia nativa) va dentro de este lock:
+        // liberar() no puede cerrar el interprete mientras este bloque lo esta usando, sin
+        // importar cuanto tarde la inferencia en este dispositivo (ver interpreterLock).
+        synchronized (interpreterLock) {
+            // interpreter==null cubre el caso de que liberar() (llamado desde onDestroy de la
+            // Activity) ya haya cerrado el interprete antes de que este hilo de analisis llegara
+            // a adquirir el lock: modeloDisponible es final y no se actualiza en liberar(), asi
+            // que por si solo no basta para detectar ese caso.
+            if (interpreter == null) {
+                return Collections.emptyList();
             }
+            try {
+                LetterboxResult lb = letterbox(frame);
+                float[][][][] entrada = bitmapToNchwTensor(lb.bitmap);
+                lb.bitmap.recycle();
 
-            List<DetectionResult> candidatos = decodificarSalida(salida, lb, frame.getWidth(), frame.getHeight());
-            List<DetectionResult> resultado = nmsPorClase(candidatos);
+                float[][][] salida = new float[1][4 + classNames.size()][numAnclas()];
+                interpreter.run(entrada, salida);
 
-            if (DEBUG_LOGS) {
-                Log.d(TAG, "[DEBUG] candidatos antes de NMS=" + candidatos.size()
-                        + "  detecciones finales=" + resultado.size());
-                for (DetectionResult d : resultado) {
-                    Log.d(TAG, "[DEBUG] final: clase=" + d.getClassName() + " conf=" + d.getConfidence()
-                            + " box=[" + d.getLeft() + "," + d.getTop() + "," + d.getRight() + "," + d.getBottom() + "]");
+                if (DEBUG_LOGS) {
+                    Log.d(TAG, "[DEBUG] bitmap analizado: " + frame.getWidth() + "x" + frame.getHeight()
+                            + "  letterbox: escala=" + lb.escala + " padLeft=" + lb.padLeft + " padTop=" + lb.padTop);
                 }
+
+                Map<DetectionResult, float[][]> debugCadenaPorDeteccion =
+                        DEBUG_LOGS ? new IdentityHashMap<>() : null;
+                List<DetectionResult> candidatos = decodificarSalida(salida, lb, frame.getWidth(), frame.getHeight(),
+                        debugCadenaPorDeteccion);
+                List<DetectionResult> resultado = nmsPorClase(candidatos);
+
+                if (DEBUG_LOGS) {
+                    Log.d(TAG, "[DEBUG] candidatos antes de NMS=" + candidatos.size()
+                            + "  detecciones finales=" + resultado.size());
+                    for (DetectionResult d : resultado) {
+                        // Cadena COMPLETA de la caja para esta deteccion final (sobrevivio al NMS):
+                        // boxModelo640 (lectura cruda cx,cy,w,h ya en pixeles del lienzo 640x640,
+                        // ANTES de invertir el letterbox) -> boxDespuesLetterbox (tras restar
+                        // padding y dividir por escala, EXPRESADA EN COORDENADAS DE LA IMAGEN
+                        // ORIGINAL, SIN recortar todavia -- si esta se sale mucho de
+                        // [0,frameW]x[0,frameH], el clamp de boxImagen la va a "aplanar" contra el
+                        // borde, y ESO es lo que se veria como caja gigante) -> boxImagen (post
+                        // clamp, = las coordenadas que realmente guarda este DetectionResult).
+                        float[][] cadena = debugCadenaPorDeteccion.get(d);
+                        String box640Str = cadena != null ? aStr(cadena[0]) : "?";
+                        String boxSinClampStr = cadena != null ? aStr(cadena[1]) : "?";
+                        Log.d(TAG, "[DEBUG] FINAL class=" + d.getClassName() + " conf=" + d.getConfidence()
+                                + " boxModelo640=" + box640Str
+                                + " boxDespuesLetterbox(sinClamp)=" + boxSinClampStr
+                                + " boxImagen(postClamp)=" + aStr(new float[]{d.getLeft(), d.getTop(), d.getRight(), d.getBottom()})
+                                + " frameAnalizado=" + frame.getWidth() + "x" + frame.getHeight());
+                    }
+                }
+                return resultado;
+            } catch (Exception e) {
+                Log.e(TAG, "Error durante la inferencia sobre un fotograma", e);
+                return Collections.emptyList();
             }
-            return resultado;
-        } catch (Exception e) {
-            Log.e(TAG, "Error durante la inferencia sobre un fotograma", e);
-            return Collections.emptyList();
         }
     }
 
     @Override
     public void liberar() {
-        if (interpreter != null) {
-            interpreter.close();
-            interpreter = null;
+        // Bloquea hasta que una inferencia en curso (si la hay) termine: ver interpreterLock.
+        // Puede tardar lo que tarde esa inferencia en este dispositivo, pero es preferible a la
+        // alternativa (cerrar el interprete nativo mientras otro hilo sigue dentro de el).
+        synchronized (interpreterLock) {
+            if (interpreter != null) {
+                interpreter.close();
+                interpreter = null;
+            }
         }
     }
 
@@ -297,8 +345,17 @@ public class YoloTfliteDetector implements DetectorService {
     // Postprocesamiento: decodificar [1,11,8400] + deshacer letterbox + NMS por clase
     // ------------------------------------------------------------------
 
+    /** TEMPORAL: formatea una caja [x1,y1,x2,y2] para los logs de depuracion de la cadena de
+     * coordenadas (ver DEBUG_LOGS). Quitar junto con el resto del debug una vez confirmado en
+     * dispositivo fisico que las cajas quedan correctamente ajustadas. */
+    private static String aStr(float[] box) {
+        return String.format(Locale.US, "[%.1f,%.1f,%.1f,%.1f] w=%.1f h=%.1f",
+                box[0], box[1], box[2], box[3], box[2] - box[0], box[3] - box[1]);
+    }
+
     private List<DetectionResult> decodificarSalida(float[][][] salida, LetterboxResult lb,
-                                                      int origW, int origH) {
+                                                      int origW, int origH,
+                                                      Map<DetectionResult, float[][]> debugCadenaOut) {
         float[][] out = salida[0]; // [4+nc][N]
         int numAnclas = out[0].length;
         int numClases = classNames.size();
@@ -315,7 +372,13 @@ public class YoloTfliteDetector implements DetectorService {
                     mejorClase = c;
                 }
             }
-            if (mejorScore < DetectorConfig.CONFIDENCE_THRESHOLD) {
+            // Estrictamente MAYOR (no >=): una confianza de exactamente 50.00% NO debe mostrarse,
+            // solo 50.01% en adelante (ver DetectorConfig.CONFIDENCE_THRESHOLD). Único punto de
+            // todo el pipeline que compara contra el umbral: NMS (nmsPorClase) ya no vuelve a
+            // comparar contra CONFIDENCE_THRESHOLD, solo compara candidatos entre sí (IoU/
+            // contención), y OverlayView dibuja tal cual la lista que recibe — así que filtrar
+            // aquí basta para garantizar que nada <=50% llegue a NMS ni a pantalla.
+            if (mejorScore <= DetectorConfig.CONFIDENCE_THRESHOLD) {
                 continue;
             }
 
@@ -327,30 +390,38 @@ public class YoloTfliteDetector implements DetectorService {
             float w = rawW * INPUT_SIZE;
             float h = rawH * INPUT_SIZE;
 
-            float x1 = cx - w / 2f;
-            float y1 = cy - h / 2f;
-            float x2 = cx + w / 2f;
-            float y2 = cy + h / 2f;
+            float x1_640 = cx - w / 2f;
+            float y1_640 = cy - h / 2f;
+            float x2_640 = cx + w / 2f;
+            float y2_640 = cy + h / 2f;
             if (DEBUG_LOGS && loggeados < DEBUG_LOG_MAX_CANDIDATOS) {
                 Log.d(TAG, "[DEBUG] candidato ancla=" + a + " clase=" + classNames.get(mejorClase)
                         + " score=" + mejorScore + "  raw xywh=(" + rawX + "," + rawY + "," + rawW + "," + rawH + ")"
-                        + "  caja en lienzo 640=[" + x1 + "," + y1 + "," + x2 + "," + y2 + "]");
+                        + "  caja en lienzo 640=[" + x1_640 + "," + y1_640 + "," + x2_640 + "," + y2_640 + "]");
             }
 
-            // deshacer letterbox: quitar el relleno y des-escalar a la imagen original
-            x1 = (x1 - lb.padLeft) / lb.escala;
-            y1 = (y1 - lb.padTop) / lb.escala;
-            x2 = (x2 - lb.padLeft) / lb.escala;
-            y2 = (y2 - lb.padTop) / lb.escala;
+            // deshacer letterbox: quitar el relleno y des-escalar a la imagen original.
+            // OJO: SIN recortar todavia -- si el modelo predijo una caja demasiado grande
+            // para este ancla, aqui puede salirse mucho de [0,origW]x[0,origH]. Se guarda
+            // este valor (boxSinClamp) ANTES del clamp para el log de depuracion: si en
+            // dispositivo real se ve boxSinClamp muy fuera de rango mientras boxImagen
+            // (post-clamp) queda pegada a los bordes, confirma que la "caja gigante" es un
+            // recorte de una prediccion del modelo ya desproporcionada, no un error de
+            // transformacion de coordenadas.
+            float x1_sinClamp = (x1_640 - lb.padLeft) / lb.escala;
+            float y1_sinClamp = (y1_640 - lb.padTop) / lb.escala;
+            float x2_sinClamp = (x2_640 - lb.padLeft) / lb.escala;
+            float y2_sinClamp = (y2_640 - lb.padTop) / lb.escala;
 
-            x1 = clamp(x1, 0, origW);
-            y1 = clamp(y1, 0, origH);
-            x2 = clamp(x2, 0, origW);
-            y2 = clamp(y2, 0, origH);
+            float x1 = clamp(x1_sinClamp, 0, origW);
+            float y1 = clamp(y1_sinClamp, 0, origH);
+            float x2 = clamp(x2_sinClamp, 0, origW);
+            float y2 = clamp(y2_sinClamp, 0, origH);
 
             if (DEBUG_LOGS && loggeados < DEBUG_LOG_MAX_CANDIDATOS) {
                 Log.d(TAG, "[DEBUG] candidato ancla=" + a + " caja sin letterbox (imagen "
-                        + origW + "x" + origH + ")=[" + x1 + "," + y1 + "," + x2 + "," + y2 + "]");
+                        + origW + "x" + origH + ") sinClamp=[" + x1_sinClamp + "," + y1_sinClamp + ","
+                        + x2_sinClamp + "," + y2_sinClamp + "]  postClamp=[" + x1 + "," + y1 + "," + x2 + "," + y2 + "]");
                 loggeados++;
             }
 
@@ -358,7 +429,14 @@ public class YoloTfliteDetector implements DetectorService {
                 continue; // caja degenerada tras el recorte, descartar
             }
 
-            candidatos.add(new DetectionResult(mejorClase, classNames.get(mejorClase), mejorScore, x1, y1, x2, y2));
+            DetectionResult candidato = new DetectionResult(mejorClase, classNames.get(mejorClase), mejorScore, x1, y1, x2, y2);
+            candidatos.add(candidato);
+            if (debugCadenaOut != null) {
+                debugCadenaOut.put(candidato, new float[][]{
+                        {x1_640, y1_640, x2_640, y2_640},
+                        {x1_sinClamp, y1_sinClamp, x2_sinClamp, y2_sinClamp}
+                });
+            }
         }
         return candidatos;
     }
@@ -367,44 +445,41 @@ public class YoloTfliteDetector implements DetectorService {
         return Math.max(min, Math.min(max, v));
     }
 
-    /** NMS independiente por clase (no agnostico), con DetectorConfig.IOU_THRESHOLD — igual que
-     * el comportamiento por defecto de Ultralytics (agnostic_nms=False). */
-    private static List<DetectionResult> nmsPorClase(List<DetectionResult> candidatos) {
-        Map<Integer, List<DetectionResult>> porClase = new HashMap<>();
-        for (DetectionResult d : candidatos) {
-            porClase.computeIfAbsent(d.getClassId(), k -> new ArrayList<>()).add(d);
-        }
-
+    /** NMS por clase: conserva las cajas de mayor confianza; no supone que la menor sea mejor. */
+    static List<DetectionResult> nmsPorClase(List<DetectionResult> candidatos) {
+        List<DetectionResult> ordenados = new ArrayList<>(candidatos);
+        ordenados.sort((a, b) -> Float.compare(b.getConfidence(), a.getConfidence()));
         List<DetectionResult> resultado = new ArrayList<>();
-        for (List<DetectionResult> lista : porClase.values()) {
-            lista.sort((a, b) -> Float.compare(b.getConfidence(), a.getConfidence()));
-            boolean[] suprimido = new boolean[lista.size()];
-            for (int i = 0; i < lista.size(); i++) {
-                if (suprimido[i]) {
-                    continue;
-                }
-                DetectionResult actual = lista.get(i);
-                resultado.add(actual);
-                for (int j = i + 1; j < lista.size(); j++) {
-                    if (!suprimido[j] && iou(actual, lista.get(j)) > DetectorConfig.IOU_THRESHOLD) {
-                        suprimido[j] = true;
-                    }
+        for (DetectionResult candidato : ordenados) {
+            boolean duplicado = false;
+            for (DetectionResult existente : resultado) {
+                if (existente.getClassId() == candidato.getClassId()
+                        && iou(candidato, existente) > DetectorConfig.IOU_THRESHOLD) {
+                    duplicado = true;
+                    break;
                 }
             }
+            if (!duplicado) resultado.add(candidato);
         }
         return resultado;
     }
 
-    private static float iou(DetectionResult a, DetectionResult b) {
+    private static float area(DetectionResult d) {
+        return (d.getRight() - d.getLeft()) * (d.getBottom() - d.getTop());
+    }
+
+    private static float interseccion(DetectionResult a, DetectionResult b) {
         float interLeft = Math.max(a.getLeft(), b.getLeft());
         float interTop = Math.max(a.getTop(), b.getTop());
         float interRight = Math.min(a.getRight(), b.getRight());
         float interBottom = Math.min(a.getBottom(), b.getBottom());
-        float interArea = Math.max(0, interRight - interLeft) * Math.max(0, interBottom - interTop);
+        return Math.max(0, interRight - interLeft) * Math.max(0, interBottom - interTop);
+    }
 
-        float areaA = (a.getRight() - a.getLeft()) * (a.getBottom() - a.getTop());
-        float areaB = (b.getRight() - b.getLeft()) * (b.getBottom() - b.getTop());
-        float union = areaA + areaB - interArea;
+    private static float iou(DetectionResult a, DetectionResult b) {
+        float interArea = interseccion(a, b);
+        float union = area(a) + area(b) - interArea;
         return union <= 0 ? 0 : interArea / union;
     }
+
 }

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Sombra de "apoyo en el suelo" para el robot de cuerpo entero: un óvalo difuso y sutil justo
+     debajo de la base, para dar sensación de profundidad/peso en vez de que BioTec se vea
+     "flotando" sobre el fondo plano. Deliberadamente independiente del vector del robot
+     (ic_biotec_full*.xml): así no hay que tocar (ni sincronizar entre los 4 archivos que
+     comparten el mismo cuerpo) ningún path del personaje ya validado — solo se agrega una vista
+     detrás, en el layout. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <gradient
+        android:type="radial"
+        android:gradientRadius="50%"
+        android:startColor="#241B5E3C"
+        android:endColor="#001B5E3C" />
+</shape>

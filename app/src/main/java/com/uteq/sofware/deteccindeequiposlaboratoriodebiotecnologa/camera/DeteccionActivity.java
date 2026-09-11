@@ -72,6 +72,7 @@ public class DeteccionActivity extends AppCompatActivity {
     public static final String EXTRA_RESULTADO_EQUIPO_AREA = "extra_resultado_equipo_area";
     public static final String EXTRA_RESULTADO_CLASE_DETECTOR = "extra_resultado_clase_detector";
 
+    private android.view.View.OnLayoutChangeListener esperandoLayout;
     private PreviewView previewView;
     private OverlayView overlayView;
     private TextView bannerModeloPendiente;
@@ -119,6 +120,12 @@ public class DeteccionActivity extends AppCompatActivity {
 
         previewView = findViewById(R.id.previewView);
         overlayView = findViewById(R.id.overlayView);
+        // Fuerza composicion por software: en algunos SoCs (Unisoc, confirmado en este
+        // dispositivo fisico) el driver de GPU no compone correctamente una View custom dibujada
+        // con Canvas cuando queda en la misma jerarquia que un TextureView/SurfaceView de camara,
+        // aun con implementationMode=compatible en PreviewView -- el onDraw se ejecuta (las cajas
+        // se calculan y el hit-test tactil funciona) pero nada se ve en pantalla.
+        overlayView.setLayerType(android.view.View.LAYER_TYPE_SOFTWARE, null);
         bannerModeloPendiente = findViewById(R.id.bannerModeloPendiente);
         panelPermiso = findViewById(R.id.panelPermiso);
         textMensajePermiso = findViewById(R.id.textMensajePermiso);
@@ -222,6 +229,21 @@ public class DeteccionActivity extends AppCompatActivity {
 
     private void mostrarCamara() {
         panelPermiso.setVisibility(android.view.View.GONE);
+        if (isFinishing() || isDestroyed()) return;
+        if (previewView.getViewPort() == null) {
+            if (esperandoLayout == null) {
+                esperandoLayout = (v, l, t, r, bottom, oldL, oldT, oldR, oldB) -> {
+                    if (previewView.getViewPort() != null) {
+                        previewView.removeOnLayoutChangeListener(esperandoLayout);
+                        esperandoLayout = null;
+                        mostrarCamara();
+                    }
+                };
+                previewView.addOnLayoutChangeListener(esperandoLayout);
+                previewView.requestLayout();
+            }
+            return;
+        }
 
         ListenableFuture<ProcessCameraProvider> future = ProcessCameraProvider.getInstance(this);
         future.addListener(() -> {
@@ -251,21 +273,10 @@ public class DeteccionActivity extends AppCompatActivity {
                 // de visión real (ver ImageProxyUtils.toBitmap(), que además respeta
                 // ImageProxy.getCropRect() para el recorte exacto).
                 ViewPort viewPort = previewView.getViewPort();
-                if (viewPort != null) {
-                    UseCaseGroup useCaseGroup = new UseCaseGroup.Builder()
-                            .addUseCase(preview)
-                            .addUseCase(imageAnalysis)
-                            .setViewPort(viewPort)
-                            .build();
-                    cameraProvider.bindToLifecycle(this, cameraSelector, useCaseGroup);
-                } else {
-                    // previewView todavia no tiene tamano asignado (layout no completado); caso
-                    // raro pero posible en el primer arranque. Se enlaza sin ViewPort para no
-                    // bloquear la camara -- puede desalinear las cajas hasta el proximo bind.
-                    Log.w("DeteccionActivity", "previewView.getViewPort() devolvio null: "
-                            + "vinculando Preview/ImageAnalysis sin ViewPort compartido.");
-                    cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageAnalysis);
-                }
+                if (viewPort == null || isFinishing() || isDestroyed()) return;
+                UseCaseGroup useCaseGroup = new UseCaseGroup.Builder()
+                        .addUseCase(preview).addUseCase(imageAnalysis).setViewPort(viewPort).build();
+                cameraProvider.bindToLifecycle(this, cameraSelector, useCaseGroup);
             } catch (ExecutionException | InterruptedException e) {
                 Log.e("DeteccionActivity", "No se pudo iniciar la cámara", e);
             }
@@ -280,13 +291,14 @@ public class DeteccionActivity extends AppCompatActivity {
      * se cierra (try/finally), se procese o no, para no bloquear el pipeline de la cámara.
      */
     /** TEMPORAL: logs de diagnostico de la cadena de coordenadas. Ver YoloTfliteDetector.DEBUG_LOGS. */
-    private static final boolean DEBUG_LOGS = true;
+    private static final boolean DEBUG_LOGS = false;
 
     private void analizarFotograma(@NonNull ImageProxy imageProxy) {
         if (!detectorService.estaListo() || !detectando.compareAndSet(false, true)) {
             imageProxy.close();
             return;
         }
+        Bitmap frame = null;
         try {
             int rotacion = imageProxy.getImageInfo().getRotationDegrees();
             if (DEBUG_LOGS) {
@@ -295,7 +307,7 @@ public class DeteccionActivity extends AppCompatActivity {
                         + "  previewView=" + previewView.getWidth() + "x" + previewView.getHeight());
             }
 
-            Bitmap frame = ImageProxyUtils.toBitmap(imageProxy);
+            frame = ImageProxyUtils.toBitmap(imageProxy);
             List<DetectionResult> resultados = detectorService.detectar(frame);
             int ancho = frame.getWidth();
             int alto = frame.getHeight();
@@ -310,30 +322,36 @@ public class DeteccionActivity extends AppCompatActivity {
         } catch (Exception e) {
             Log.e("DeteccionActivity", "Error analizando fotograma", e);
         } finally {
+            if (frame != null && !frame.isRecycled()) frame.recycle();
             imageProxy.close();
             detectando.set(false);
         }
     }
 
     /**
-     * CAUSA RAIZ IDENTIFICADA de cierres intermitentes de la app al salir de esta pantalla (ver
-     * informe de la sesión, "crashes/navegación"): el orden anterior llamaba primero a
-     * {@code detectorService.liberar()} (cierra el {@code Interpreter} nativo de TFLite) y
-     * DESPUÉS a {@code executorAnalisis.shutdown()}. {@code shutdown()} no cancela ni espera la
-     * tarea que {@code executorAnalisis} pudiera estar ejecutando en ese instante — si
-     * {@link #analizarFotograma} seguía dentro de {@code detectorService.detectar()} (es decir,
-     * dentro de {@code Interpreter.run()}) en el momento exacto en que el hilo de UI cerraba el
-     * interprete, se producía una carrera entre "cerrar" y "usar" el mismo objeto nativo de
-     * TFLite. Eso no siempre lanza una excepción Java capturable: puede terminar en un crash
-     * nativo del proceso, lo que encaja con el síntoma real reportado ("a veces se cierra, no
-     * siempre, al regresar de cámara").
+     * CAUSA que motivó este orden (apagar primero {@code executorAnalisis}, luego liberar el
+     * detector): con el orden inverso, si {@link #analizarFotograma} seguía dentro de
+     * {@code detectorService.detectar()} (es decir, dentro de {@code Interpreter.run()}) en el
+     * momento exacto en que el hilo de UI cerraba el interprete, se producía una carrera entre
+     * "cerrar" y "usar" el mismo objeto nativo de TFLite — pudiendo terminar en un crash nativo
+     * del proceso (no siempre una excepción Java capturable).
      * <p>
-     * Corrección: apagar el executor primero y esperar (con tope de tiempo) a que la tarea en
-     * curso termine ANTES de cerrar el interprete, garantizando que ningún hilo siga dentro de
-     * {@code detectar()}/{@code Interpreter.run()} cuando {@code liberar()} se ejecuta.
+     * IMPORTANTE: el {@code awaitTermination(500ms)} de abajo por sí solo NO garantiza nada — es
+     * solo una optimización para evitar bloquear este hilo en el caso común (inferencia rápida).
+     * Se confirmó en un dispositivo físico real (gama media/baja) que una inferencia puede tardar
+     * más de 500ms: en ese caso {@code awaitTermination} devuelve {@code false} sin cancelar la
+     * tarea en curso, y este método seguía adelante e igual llamaba a
+     * {@code detectorService.liberar()} mientras el hilo de análisis seguía dentro de
+     * {@code Interpreter.run()} — el mismo SIGSEGV que esto pretendía evitar (confirmado por
+     * tombstone en Logcat: "pool-4-thread-1 ... libLiteRt.so" justo al abrir
+     * {@code VozAsistenteActivity} tras seleccionar un equipo). La garantía REAL contra esa
+     * carrera ahora vive en {@link YoloTfliteDetector#detectar} / {@link YoloTfliteDetector#liberar()}
+     * (bloqueadas entre sí con un lock, sin límite de tiempo): {@code liberar()} de ahí nunca
+     * cierra el intérprete mientras una inferencia sigue en curso, sin importar cuánto tarde.
      */
     @Override
     protected void onDestroy() {
+        if (esperandoLayout != null) previewView.removeOnLayoutChangeListener(esperandoLayout);
         if (DEBUG_LIFECYCLE_LOGS) {
             Log.d(TAG_LIFECYCLE, "onDestroy() instancia=" + System.identityHashCode(this)
                     + " isFinishing=" + isFinishing());

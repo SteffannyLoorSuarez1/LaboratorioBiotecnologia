@@ -1,45 +1,41 @@
 package com.uteq.sofware.deteccindeequiposlaboratoriodebiotecnologa.network;
 
 import android.content.Context;
-
+import com.uteq.sofware.deteccindeequiposlaboratoriodebiotecnologa.security.SecureConfigManager;
 import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.Request;
 import com.android.volley.toolbox.JsonObjectRequest;
+import com.uteq.sofware.deteccindeequiposlaboratoriodebiotecnologa.BuildConfig;
+import java.util.Collections;
+import java.util.Map;
 
-/**
- * Consulta GET /health del backend, usada para saber (antes de habilitar el chat) si el
- * servicio de asistente inteligente ya tiene configurado el RAG (OPENAI_API_KEY +
- * OPENAI_VECTOR_STORE_ID) del lado del servidor.
- */
+/** Comprueba acceso a OpenAI sin generar respuestas ni depender del antiguo /health. */
 public class HealthRepository {
-
     public interface Callback {
-        void onResultado(boolean ragConfigurado);
+        void onResultado(boolean configurado);
         void onError();
     }
-
-    private static final String ENDPOINT_HEALTH = ApiClient.BASE_URL + "/health";
-    private static final int TIMEOUT_MS = 8000;
-
     private final Context context;
-
-    public HealthRepository(Context context) {
-        this.context = context.getApplicationContext();
-    }
-
+    public HealthRepository(Context context) { this.context = context.getApplicationContext(); }
     public void consultarEstado(Callback callback) {
-        JsonObjectRequest request = new JsonObjectRequest(
-                Request.Method.GET,
-                ENDPOINT_HEALTH,
-                null,
-                response -> callback.onResultado(response.optBoolean("rag_configurado", false)),
-                error -> callback.onError());
-
-        request.setRetryPolicy(new DefaultRetryPolicy(
-                TIMEOUT_MS,
-                0,
-                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
-
+        final String apiKey = new SecureConfigManager(context).getEffectiveApiKey();
+        if (apiKey.isEmpty()) {
+            callback.onResultado(false);
+            return;
+        }
+        JsonObjectRequest request = new JsonObjectRequest(Request.Method.GET,
+                ApiClient.BASE_URL + "/models/" + BuildConfig.OPENAI_MODEL, null,
+                response -> callback.onResultado(true), error -> {
+                    if (error.networkResponse != null && error.networkResponse.statusCode == 401)
+                        callback.onResultado(false);
+                    else callback.onError();
+                }) {
+            @Override public Map<String, String> getHeaders() {
+                return Collections.singletonMap("Authorization", "Bearer " + apiKey);
+            }
+        };
+        request.setShouldCache(false);
+        request.setRetryPolicy(new DefaultRetryPolicy(15000, 0, DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
         ApiClient.getInstancia(context).agregarPeticion(request);
     }
 }

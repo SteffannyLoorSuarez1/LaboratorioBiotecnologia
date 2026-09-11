@@ -1,3 +1,8 @@
+> Este backend se conserva como herramienta opcional. La app Android consulta directamente
+> a OpenAI por HTTPS; no necesita ejecutar este servidor. Consulta
+> [Bio directo](../docs/BIO_OPENAI_DIRECTO.md). `backend/.env` se lee al compilar para incluir
+> la credencial actual en el APK, según la decisión del propietario.
+
 # Backend — Asistente Laboratorio de Biotecnología UTEQ
 
 Backend en Python + FastAPI, independiente del módulo Android. Expone:
@@ -23,9 +28,11 @@ copy .env.example .env       # Windows
 # cp .env.example .env       # Linux/Mac
 ```
 
-Editar `.env` y completar `OPENAI_API_KEY` y `OPENAI_VECTOR_STORE_ID`. El servidor funciona
-igualmente si estas variables no están configuradas: `/health` seguirá respondiendo y
-`/api/chat` devolverá un mensaje controlado indicando que el RAG aún no está configurado.
+Editar `.env` y completar `OPENAI_API_KEY`. El servidor funciona igualmente si no está
+configurada: `/health` seguirá respondiendo y `/api/chat` devolverá un mensaje controlado
+indicando que el RAG aún no está configurado. No hace falta ningún `OPENAI_VECTOR_STORE_ID`:
+cada equipo (`clase_detector`) usa su propio Vector Store, ya definido en código — ver
+`app/services/equipo_manual_map.py` y `docs/RAG_SETUP.md`.
 
 Alternativamente, cada petición a `/api/chat` puede incluir el encabezado
 `X-OpenAI-API-Key` (usado por la app Android cuando el usuario configura su propia clave

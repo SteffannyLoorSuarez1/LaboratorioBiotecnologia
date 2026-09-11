@@ -1,10 +1,6 @@
 package com.uteq.sofware.deteccindeequiposlaboratoriodebiotecnologa.network;
 
-/**
- * Cuerpo de la petición POST /api/chat. Android solo envía identificadores y la pregunta del
- * usuario; el backend es responsable de recuperar los fragmentos documentales relevantes
- * (RAG) y de consultar al LLM.
- */
+/** Contexto del equipo y pregunta que Bio convierte en una petición directa a Responses API. */
 public class ChatRequest {
 
     private final String equipo;
@@ -14,7 +10,7 @@ public class ChatRequest {
 
     /** @param claseDetector clase estable del detector (ver {@code Equipo.getClaseDetector()} /
      *                       {@code labels.txt}), NO el nombre bonito de {@code equipo}: el
-     *                       backend la usa para restringir file_search al manual correspondiente
+     *                       cliente la usa para restringir file_search al manual correspondiente
      *                       de ese equipo. Puede venir vacía/null si no hay equipo seleccionado
      *                       o si el equipo todavía no tiene clase asociada. */
     public ChatRequest(String equipo, String area, String claseDetector, String pregunta) {

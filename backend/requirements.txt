@@ -15,3 +15,7 @@ python-dotenv>=1.0.0
 # versión exacta para que una futura instalación no traiga una versión mayor distinta
 # sin haber sido revisada primero contra este archivo.
 openai==3.5.0
+
+# Pruebas (backend/tests/) — no se despliega en producción, pero se instala en el venv de
+# desarrollo para poder ejecutar `pytest` localmente.
+pytest>=8.0.0

@@ -32,13 +32,8 @@ import com.uteq.sofware.deteccindeequiposlaboratoriodebiotecnologa.model.Detecti
  * ({@code sourceWidth}/{@code sourceHeight}) — el fotograma ya rotado a orientación vertical
  * por {@code ImageProxyUtils}, la misma orientación en la que se muestra {@code PreviewView}.
  * <p>
- * {@code PreviewView} en este layout ({@code activity_deteccion.xml}) no declara
- * {@code app:scaleType}, por lo que usa el valor por defecto de CameraX,
- * {@code ScaleType.FILL_CENTER} ("cover": escala uniforme hasta cubrir toda la vista,
- * recortando el sobrante en un eje — nunca deforma la imagen). Esta vista replica exactamente
- * ese mismo cálculo de escala + recorte centrado para que las cajas coincidan visualmente con
- * lo que el usuario ve. Si se cambia el {@code scaleType} de {@code previewView} en el XML,
- * este cálculo debe actualizarse igual.
+ * PreviewView usa FIT_CENTER: muestra el fotograma completo sin ampliarlo para recortarlo.
+ * El overlay aplica la misma escala uniforme y los mismos márgenes centrados.
  * <p>
  * Selección táctil (ver {@link #habilitarSeleccionTactil}): DESACTIVADA por defecto (modo
  * detección normal, sin cambios de comportamiento). Solo {@code DeteccionActivity} en modo
@@ -49,7 +44,7 @@ import com.uteq.sofware.deteccindeequiposlaboratoriodebiotecnologa.model.Detecti
 public class OverlayView extends View {
 
     /** TEMPORAL: logs de diagnostico de la cadena de coordenadas. Ver YoloTfliteDetector.DEBUG_LOGS. */
-    private static final boolean DEBUG_LOGS = true;
+    private static final boolean DEBUG_LOGS = false;
 
     /** Tamaño de texto de la etiqueta en sp (no px crudos): escala con la densidad de pantalla y
      * la preferencia de tamaño de fuente del sistema, igual que un TextView normal. */
@@ -201,11 +196,10 @@ public class OverlayView extends View {
             return;
         }
 
-        // FILL_CENTER / "cover": una sola escala uniforme (la mayor de las dos) para que el
-        // contenido cubra toda la vista, más un desplazamiento centrado que recorta el sobrante.
+        // FIT_CENTER: escala uniforme y márgenes, sin zoom ni recorte para llenar la pantalla.
         float viewWidth = getWidth();
         float viewHeight = getHeight();
-        float scale = Math.max(viewWidth / sourceWidth, viewHeight / sourceHeight);
+        float scale = Math.min(viewWidth / sourceWidth, viewHeight / sourceHeight);
         float contenidoAncho = sourceWidth * scale;
         float contenidoAlto = sourceHeight * scale;
         float offsetX = (viewWidth - contenidoAncho) / 2f;
@@ -228,8 +222,9 @@ public class OverlayView extends View {
                     resultado.getRight() * scale + offsetX,
                     resultado.getBottom() * scale + offsetY);
             if (DEBUG_LOGS) {
-                android.util.Log.d("OverlayView", "[DEBUG] caja final en pantalla: clase="
-                        + resultado.getClassName() + " conf=" + resultado.getConfidence() + " box=" + box);
+                android.util.Log.d("OverlayView", "[DEBUG] class=" + resultado.getClassName()
+                        + " conf=" + resultado.getConfidence() + " boxPreview=" + box
+                        + " (view=" + viewWidth + "x" + viewHeight + " scale=" + scale + ")");
             }
 
             // Cache para hit-test: misma caja, mismas coordenadas de pantalla que se dibujan.
@@ -244,10 +239,9 @@ public class OverlayView extends View {
             // deben cruzar toda la pantalla en una sola línea. El nombre completo se sigue
             // usando en chat/ficha técnica/contexto del backend — esto solo acorta el overlay.
             // LabRepository.obtenerNombreCorto ya resuelve por mapa (O(1)), no por lista lineal.
-            String etiqueta = String.format(Locale.getDefault(), "%s · %.0f%%",
-                    LabRepository.getInstancia().obtenerNombreCorto(resultado.getClassName()),
-                    resultado.getConfidence() * 100f);
-            dibujarEtiqueta(canvas, box, etiqueta, viewWidth, viewHeight);
+            String nombre = LabRepository.getInstancia().obtenerNombreCorto(resultado.getClassName());
+            String confianza = String.format(Locale.getDefault(), "Confianza: %.0f%%", resultado.getConfidence() * 100f);
+            dibujarEtiqueta(canvas, box, nombre, confianza, viewWidth, viewHeight);
         }
     }
 
@@ -261,51 +255,51 @@ public class OverlayView extends View {
      * nunca mueve el bounding box real, solo la etiqueta). No participa en absoluto en el
      * cálculo de coordenadas del bounding box (parámetro {@code box} de solo lectura aquí).
      */
-    private void dibujarEtiqueta(Canvas canvas, RectF box, String etiqueta, float viewWidth, float viewHeight) {
-        float textoAncho = textPaint.measureText(etiqueta);
-        float textoAlto = textPaint.descent() - textPaint.ascent();
-        float anchoEtiqueta = textoAncho + etiquetaPaddingPx * 2f;
-        float altoEtiqueta = textoAlto + etiquetaPaddingPx * 2f;
-
-        // Posición preferida: encima de la esquina superior izquierda del box.
-        float left = box.left;
-        float top = box.top - altoEtiqueta - etiquetaMargenPx;
-
-        // Sin espacio arriba (box pegado al borde superior de la pantalla): colocarla DENTRO
-        // de la parte superior del box en su lugar, nunca fuera de la vista por arriba.
-        if (top < 0) {
-            top = Math.min(box.top + etiquetaMargenPx, viewHeight - altoEtiqueta);
-        }
-
-        // Clamp horizontal: nunca X negativa, nunca se sale por el borde derecho.
-        left = Math.max(0, Math.min(left, viewWidth - anchoEtiqueta));
-        // Si la etiqueta es más ancha que la vista (nombre larguísimo en pantalla muy angosta),
-        // prioriza no salirse por la izquierda sobre no salirse por la derecha.
-        if (anchoEtiqueta > viewWidth) {
-            left = 0;
-        }
-        // Clamp vertical final (por si el box ocupa casi toda la altura de la vista).
-        top = Math.max(0, Math.min(top, viewHeight - altoEtiqueta));
-
-        RectF etiquetaRect = new RectF(left, top, left + anchoEtiqueta, top + altoEtiqueta);
-
-        // Anti-solape ligero: si dos o más equipos están muy juntos, sus etiquetas pueden
-        // superponerse; se van bajando en pasos de una altura de etiqueta hasta encontrar
-        // hueco, con un tope de intentos para no complicar el caso de muchas detecciones juntas.
-        int intentos = 0;
-        while (intentos < MAX_INTENTOS_ANTISOLAPE && seSuperponeConAlguna(etiquetaRect)) {
-            float nuevoTop = etiquetaRect.top + altoEtiqueta + etiquetaMargenPx;
-            if (nuevoTop + altoEtiqueta > viewHeight) {
-                break; // sin espacio hacia abajo: mejor una superposición leve que salirse de la vista
+    private void dibujarEtiqueta(Canvas canvas, RectF box, String nombre, String confianza,
+                                 float viewWidth, float viewHeight) {
+        float margen = etiquetaMargenPx;
+        float maxAncho = Math.max(1, viewWidth - 2 * margen - 2 * etiquetaPaddingPx);
+        // El porcentaje tiene su propia línea: nunca desaparece por un nombre largo.
+        List<String> lineas = new ArrayList<>();
+        String pendiente = nombre;
+        while (!pendiente.isEmpty() && lineas.size() < 2) {
+            int n = textPaint.breakText(pendiente, true, maxAncho, null);
+            if (n <= 0) break;
+            if (n < pendiente.length() && lineas.size() == 1) {
+                while (n > 0 && textPaint.measureText(pendiente.substring(0, n) + "…") > maxAncho) n--;
+                lineas.add(pendiente.substring(0, n) + "…");
+                break;
             }
-            etiquetaRect.offsetTo(etiquetaRect.left, nuevoTop);
-            intentos++;
+            if (n < pendiente.length()) {
+                int espacio = pendiente.lastIndexOf(' ', n);
+                if (espacio > 0) n = espacio;
+            }
+            lineas.add(pendiente.substring(0, n).trim());
+            pendiente = pendiente.substring(n).trim();
         }
-        etiquetasColocadas.add(new RectF(etiquetaRect));
-
-        canvas.drawRoundRect(etiquetaRect, etiquetaRadioPx, etiquetaRadioPx, textBackgroundPaint);
-        float baselineY = etiquetaRect.top + etiquetaPaddingPx - textPaint.ascent();
-        canvas.drawText(etiqueta, etiquetaRect.left + etiquetaPaddingPx, baselineY, textPaint);
+        lineas.add(confianza);
+        float textoAlto = textPaint.descent() - textPaint.ascent();
+        float ancho = 0;
+        for (String linea : lineas) ancho = Math.max(ancho, textPaint.measureText(linea));
+        ancho = Math.min(viewWidth - 2 * margen, ancho + 2 * etiquetaPaddingPx);
+        float alto = textoAlto * lineas.size() + 2 * etiquetaPaddingPx;
+        float left = Math.max(margen, Math.min(box.left, viewWidth - margen - ancho));
+        float top = box.top - alto - margen;
+        if (top < margen) top = box.top + margen;
+        top = Math.max(margen, Math.min(top, viewHeight - margen - alto));
+        RectF rect = new RectF(left, top, left + ancho, top + alto);
+        for (int i = 0; i < MAX_INTENTOS_ANTISOLAPE && seSuperponeConAlguna(rect); i++) {
+            float siguiente = rect.bottom + margen;
+            if (siguiente + alto > viewHeight - margen) break;
+            rect.offsetTo(left, siguiente);
+        }
+        etiquetasColocadas.add(new RectF(rect));
+        canvas.drawRoundRect(rect, etiquetaRadioPx, etiquetaRadioPx, textBackgroundPaint);
+        float baseline = rect.top + etiquetaPaddingPx - textPaint.ascent();
+        for (String linea : lineas) {
+            canvas.drawText(linea, rect.left + etiquetaPaddingPx, baseline, textPaint);
+            baseline += textoAlto;
+        }
     }
 
     private boolean seSuperponeConAlguna(RectF rect) {

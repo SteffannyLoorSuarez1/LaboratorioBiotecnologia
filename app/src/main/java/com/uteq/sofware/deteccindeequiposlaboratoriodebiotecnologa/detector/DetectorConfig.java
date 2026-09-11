@@ -9,7 +9,10 @@ package com.uteq.sofware.deteccindeequiposlaboratoriodebiotecnologa.detector;
  */
 public final class DetectorConfig {
 
-    /** Confianza mínima para mostrar una detección (0.0–1.0). */
+    /** Confianza mínima para mostrar una detección (0.0–1.0). Límite ESTRICTO (exclusivo): una
+     * detección con confianza EXACTAMENTE igual a este valor NO se muestra, solo las mayores
+     * (ver YoloTfliteDetector.decodificarSalida(), único punto del pipeline que compara contra
+     * este umbral: usa {@code <=} para descartar, no {@code <}). */
     public static final float CONFIDENCE_THRESHOLD = 0.5f;
 
     /** IoU usado en la supresión de no-máximos (NMS) del post-procesamiento. */

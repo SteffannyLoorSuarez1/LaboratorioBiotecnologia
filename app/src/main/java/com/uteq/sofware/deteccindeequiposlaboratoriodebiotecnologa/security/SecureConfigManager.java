@@ -45,6 +45,14 @@ public class SecureConfigManager {
         }
     }
 
+    /** La clave personal tiene prioridad; eliminarla restaura la incluida en el APK. */
+    public String getEffectiveApiKey() {
+        String personal = getApiKey();
+        return personal == null || personal.trim().isEmpty()
+                ? com.uteq.sofware.deteccindeequiposlaboratoriodebiotecnologa.BuildConfig.OPENAI_API_KEY
+                : personal.trim();
+    }
+
     public void saveApiKey(String apiKey) {
         securePrefs.edit().putString(KEY_OPENAI_API_KEY, apiKey).apply();
     }

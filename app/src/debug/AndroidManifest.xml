@@ -1,8 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    Manifest fusionado SOLO en builds de debug: habilita tráfico HTTP (cleartext) hacia el
-    backend local durante el desarrollo. No afecta a los builds de release.
--->
+<!-- Debug usa la misma política HTTPS que release. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
         android:networkSecurityConfig="@xml/network_security_config" />

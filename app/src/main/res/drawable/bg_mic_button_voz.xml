@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Botón grande de micrófono de VozAsistenteActivity: círculo con degradado ámbar mientras
+     escucha (state_activated, ver ImageButton.setActivated), degradado verde institucional en
+     reposo — antes era un relleno plano; el degradado sutil (mismo color base, solo con
+     profundidad) le da un aspecto más moderno tipo "botón con volumen" sin cambiar la paleta. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_activated="true">
+        <shape android:shape="oval">
+            <gradient
+                android:angle="90"
+                android:startColor="@color/lab_accent"
+                android:endColor="@color/lab_warning" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="oval">
+            <gradient
+                android:angle="90"
+                android:startColor="@color/lab_primary_variant"
+                android:endColor="@color/lab_primary_dark" />
+        </shape>
+    </item>
+</selector>

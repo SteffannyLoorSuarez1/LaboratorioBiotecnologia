@@ -3,7 +3,7 @@ package com.uteq.sofware.deteccindeequiposlaboratoriodebiotecnologa.network;
 import java.io.Serializable;
 
 /**
- * Fuente documental citada por el backend en una respuesta del asistente (RAG).
+ * Fuente documental citada por OpenAI en una respuesta del asistente (RAG).
  * {@code Serializable} para poder guardarse en el {@code Bundle} de
  * {@code ChatActivity.onSaveInstanceState} (ver {@code ChatMensaje}).
  */

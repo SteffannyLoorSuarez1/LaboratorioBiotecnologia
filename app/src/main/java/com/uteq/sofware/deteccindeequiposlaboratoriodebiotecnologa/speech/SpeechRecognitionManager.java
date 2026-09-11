@@ -32,6 +32,12 @@ public class SpeechRecognitionManager {
         /** El usuario terminó de hablar y el reconocedor está procesando el audio (entre
          * {@code onEndOfSpeech} y que llegue {@link #onResultado} o {@link #onError}). */
         default void onProcesando() {}
+        /** Nivel de audio del micrófono mientras se escucha (ver
+         * {@code RecognitionListener#onRmsChanged}), para una visualización tipo "onda de voz"
+         * (ver {@code VozAsistenteActivity}/{@code OndaAudioView}). Llega en el hilo de UI, con
+         * la misma frecuencia con la que Android lo reporta (típicamente cada 100-200ms)
+         * mientras el estado sea ESCUCHANDO; opcional, sin implementación por defecto. */
+        default void onNivelAudio(float rmsdB) {}
     }
 
     private static final int MAX_RESULTADOS = 3;
@@ -85,7 +91,17 @@ public class SpeechRecognitionManager {
             }
 
             @Override public void onBeginningOfSpeech() {}
-            @Override public void onRmsChanged(float rmsdB) {}
+
+            @Override
+            public void onRmsChanged(float rmsdB) {
+                // RecognitionListener siempre entrega sus callbacks en el hilo de UI (documentado
+                // en SpeechRecognizer): no hace falta runOnUiThread aquí, a diferencia de
+                // UtteranceProgressListener de TextToSpeech (ese sí llega en un hilo del motor).
+                if (resultadoListener != null) {
+                    resultadoListener.onNivelAudio(rmsdB);
+                }
+            }
+
             @Override public void onBufferReceived(byte[] buffer) {}
             @Override public void onPartialResults(Bundle partialResults) {}
             @Override public void onEvent(int eventType, Bundle params) {}

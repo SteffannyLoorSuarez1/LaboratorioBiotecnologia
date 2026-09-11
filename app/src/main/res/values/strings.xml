@@ -4,8 +4,6 @@
     <!-- Pantalla de inicio -->
     <string name="home_title">Laboratorio de Biotecnología</string>
     <string name="home_subtitle">Universidad Técnica Estatal de Quevedo</string>
-    <string name="home_action_detect">Detectar equipos</string>
-    <string name="home_action_detect_desc">Identifica equipos con la cámara</string>
     <string name="home_action_areas">Áreas del laboratorio</string>
     <string name="home_action_areas_desc">Explora las áreas y sus equipos</string>
     <string name="home_action_chat">Asistente inteligente</string>
@@ -63,7 +61,7 @@
     <string name="chat_sin_info">No tengo suficiente información, por favor pregúntele al laboratorista encargado.</string>
     <string name="chat_error_red">No se pudo conectar con el servidor.</string>
     <string name="chat_error_timeout">El servidor tardó demasiado en responder.</string>
-    <string name="chat_error_autenticacion">No fue posible autenticar el servicio de inteligencia artificial. Verifique la API Key configurada.</string>
+    <string name="chat_error_autenticacion">Bio no pudo conectarse al servicio de inteligencia artificial. Contacta al responsable del laboratorio.</string>
     <string name="chat_error_cuota">Se alcanzó un límite temporal del servicio. Intenta nuevamente.</string>
     <string name="chat_error_servidor">El servidor tuvo un problema al procesar la pregunta.</string>
     <string name="chat_error_generico">No se pudo procesar la solicitud. Intente nuevamente.</string>
@@ -76,8 +74,21 @@
     <string name="chat_permiso_audio_requerido">Se requiere permiso de micrófono para preguntar por voz.</string>
     <string name="chat_permiso_audio_denegado_permanente">El permiso de micrófono fue denegado. Actívelo desde los ajustes de la aplicación.</string>
     <string name="chat_ajustes">Ajustes</string>
-    <string name="chat_sin_api_key">El asistente inteligente aún no tiene una API Key configurada.\nConfigúrala desde Ajustes para utilizar el chat.</string>
+    <string name="chat_sin_api_key">Bio no tiene una credencial válida para consultar los manuales. Contacta al responsable del laboratorio.</string>
     <string name="chat_ir_a_configuracion">Ir a configuración</string>
+
+    <!-- Asistente por voz (BioTec) -->
+    <string name="voz_estado_idle">Puedes preguntarme sobre este equipo</string>
+    <string name="voz_estado_idle_general">Puedes preguntarme sobre el laboratorio</string>
+    <string name="voz_estado_escuchando">Te escucho…</string>
+    <string name="voz_estado_procesando">Consultando información…</string>
+    <string name="voz_consultando_sobre">Consultando sobre: %1$s</string>
+    <string name="voz_boton_chatear">Usar chat escrito</string>
+    <string name="voz_hablar">Hablar con BioTec</string>
+    <string name="voz_silenciar">Silenciar respuesta</string>
+    <string name="voz_reintentar">Reintentar</string>
+    <string name="voz_reconocimiento_no_disponible">El reconocimiento de voz no está disponible en este dispositivo.</string>
+    <string name="voz_saludo_inicial">Hola, soy Bio. ¿En qué te puedo ayudar?</string>
 
     <!-- Configuración -->
     <string name="config_title">Configuración</string>
@@ -93,7 +104,7 @@
     <string name="config_api_key_vacia">Ingrese una API Key antes de guardar.</string>
 
     <!-- Detección / cámara: modo selección desde el chat -->
-    <string name="deteccion_modo_seleccion_hint">Toca directamente el equipo detectado que quieras usar como contexto del chat.</string>
+    <string name="deteccion_modo_seleccion_hint">Toca directamente el equipo detectado que quieras usar como contexto del asistente.</string>
     <string name="deteccion_equipo_seleccionado_toast">✓ Equipo seleccionado: %1$s</string>
 
     <!-- Nombre del asistente, centralizado aquí: cambiarlo solo requiere editar este valor. -->
@@ -104,4 +115,24 @@
 
     <!-- Genéricos -->
     <string name="accion_volver">Volver</string>
+    <string name="bio_servicio_ayuda">Bio consulta los manuales del laboratorio por Internet. No necesitas configurar claves personales para hacer preguntas.</string>
+    <string name="bio_comprobar">Comprobar conexión</string>
+    <string name="bio_comprobando">Comprobando conexión con Bio…</string>
+    <string name="bio_disponible">Bio está disponible.</string>
+    <string name="bio_no_configurado">Bio no tiene una credencial válida. Contacta al responsable del laboratorio.</string>
+    <string name="bio_clave_opcional">API key personal (opcional)</string>
+    <string name="bio_clave_ayuda">Déjala vacía para seguir usando Bio normalmente. Una clave personal debe tener acceso a los manuales del laboratorio.</string>
+    <string name="bio_clave_personal">Usando tu clave personal en este teléfono.</string>
+    <string name="bio_clave_original">Usando la clave incluida con Bio.</string>
+    <string name="bio_guardar_clave">Guardar clave personal</string>
+    <string name="bio_restaurar_clave">Volver a la clave original</string>
+    <string name="bio_ver_pdf">Ver PDF del equipo</string>
+    <string name="bio_ver_pdf_boton">Ver PDF</string>
+    <string name="bio_pdf_cargando">Cargando manual…</string>
+    <string name="bio_pdf_sin_manual">Manual PDF no disponible para este equipo.</string>
+    <string name="bio_pdf_error">No se pudo abrir el manual. Vuelve a intentarlo.</string>
+    <string name="bio_pdf_anterior">Anterior</string>
+    <string name="bio_pdf_siguiente">Siguiente</string>
+    <string name="bio_pdf_pagina">Página %1$d de %2$d</string>
+    <string name="bio_habla_ahora">Habla ahora</string>
 </resources>

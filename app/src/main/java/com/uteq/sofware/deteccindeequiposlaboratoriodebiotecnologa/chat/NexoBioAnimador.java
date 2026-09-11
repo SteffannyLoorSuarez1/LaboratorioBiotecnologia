@@ -5,9 +5,13 @@ import android.graphics.PorterDuff;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
+import android.view.animation.AccelerateDecelerateInterpolator;
+import android.view.animation.Animation;
 import android.view.animation.LinearInterpolator;
+import android.view.animation.RotateAnimation;
 import android.widget.ImageView;
 
+import androidx.annotation.DrawableRes;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 
@@ -58,25 +62,89 @@ public final class NexoBioAnimador {
      * intenta sincronía fonética: es solo un ciclo simple y ligero, ver {@link #alternarBoca()}. */
     private static final long BOCA_ALTERNANCIA_MS = 220;
 
+    /** Duración de un medio-ciclo de la respiración sutil (ver {@link #respiracionSutil}): lo
+     * bastante lenta para no competir visualmente con el parpadeo ni con las animaciones de
+     * estado. */
+    private static final long DURACION_RESPIRACION_MS = 2600;
+
+    /** Amplitud horizontal (dp) del balanceo lateral MUY leve que acompaña a la respiración
+     * sutil: da sensación de "cuerpo vivo" sin ser un movimiento brusco ni gastar batería extra
+     * (reutiliza el mismo {@link ValueAnimator} de la respiración, ver {@link #iniciarRespiracion}). */
+    private static final float AMPLITUD_BALANCEO_DP = 1.4f;
+
+    /** Duración de un semiciclo del balanceo de la mano de saludo (ver {@link #iniciarSaludoMano}). */
+    private static final long DURACION_SALUDO_MANO_MS = 320;
+
     private final ImageView avatar;
     @Nullable
     private final View anilloPulso;
+    @DrawableRes
+    private final int drawableNormal;
+    @DrawableRes
+    private final int drawableBlink;
+    @DrawableRes
+    private final int drawableWink;
+    @DrawableRes
+    private final int drawableTalk;
+    /** Si está activa, añade una respiración corporal muy sutil (escala vertical + inclinación +
+     * balanceo lateral leves) mientras el estado es NORMAL — pensada para el avatar grande de
+     * cuerpo entero de {@code VozAsistenteActivity}; desactivada por defecto para no alterar el
+     * avatar pequeño ya existente en el header del chat. */
+    private final boolean respiracionSutil;
+    /** Vista opcional de la mano de saludo (ver {@code ic_biotec_hand_wave.xml}), solo usada en
+     * el estado SALUDANDO. {@code null} en el avatar pequeño del chat, que no tiene esta vista
+     * (ver constructor de 2 argumentos): en ese caso SALUDANDO se ve igual que HABLANDO. */
+    @Nullable
+    private final View manoSaludo;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable gestoRunnable = this::ejecutarCicloGesto;
     private final Runnable bocaRunnable = this::alternarBoca;
 
     private final List<ValueAnimator> animadoresActivos = new ArrayList<>();
+    @Nullable
+    private ValueAnimator animadorRespiracion;
     private NexoBioEstado estadoActual = NexoBioEstado.NORMAL;
     private boolean gestosActivos = false;
     private boolean bocaAbierta = false;
 
-    /** @param anilloPulso vista opcional (círculo con borde, ver {@code bg_nexobio_pulso.xml})
+    /** Constructor original: mismos drawables de siempre (avatar pequeño del header del chat,
+     * ver {@code ic_nexobio_robot*.xml}), sin respiración corporal continua.
+     * @param anilloPulso vista opcional (círculo con borde, ver {@code bg_nexobio_pulso.xml})
      *                     alrededor del avatar, usada como "ping" suave en ESCUCHANDO/HABLANDO.
      *                     Puede ser {@code null} (por ejemplo, para un avatar pequeño de mensaje
      *                     que no necesita esta capa extra). */
     public NexoBioAnimador(ImageView avatar, @Nullable View anilloPulso) {
+        this(avatar, anilloPulso, R.drawable.ic_nexobio_robot, R.drawable.ic_nexobio_robot_blink,
+                R.drawable.ic_nexobio_robot_wink, R.drawable.ic_nexobio_robot_talk, false, null);
+    }
+
+    /** Variante con drawables propios (por ejemplo, el robot de cuerpo entero
+     * {@code ic_biotec_full*.xml} de {@code VozAsistenteActivity}) y respiración corporal
+     * opcional, sin mano de saludo — misma lógica de parpadeo/guiño/pulso/boca que el avatar del
+     * chat, solo cambia el arte y, opcionalmente, si respira en reposo. Conservado para no
+     * obligar a todo llamador a pasar una vista de mano. */
+    public NexoBioAnimador(ImageView avatar, @Nullable View anilloPulso,
+            @DrawableRes int drawableNormal, @DrawableRes int drawableBlink,
+            @DrawableRes int drawableWink, @DrawableRes int drawableTalk,
+            boolean respiracionSutil) {
+        this(avatar, anilloPulso, drawableNormal, drawableBlink, drawableWink, drawableTalk,
+                respiracionSutil, null);
+    }
+
+    /** Variante completa, con mano de saludo opcional (ver {@link #manoSaludo}) para el estado
+     * SALUDANDO — usada por {@code VozAsistenteActivity}. */
+    public NexoBioAnimador(ImageView avatar, @Nullable View anilloPulso,
+            @DrawableRes int drawableNormal, @DrawableRes int drawableBlink,
+            @DrawableRes int drawableWink, @DrawableRes int drawableTalk,
+            boolean respiracionSutil, @Nullable View manoSaludo) {
         this.avatar = avatar;
         this.anilloPulso = anilloPulso;
+        this.drawableNormal = drawableNormal;
+        this.drawableBlink = drawableBlink;
+        this.drawableWink = drawableWink;
+        this.drawableTalk = drawableTalk;
+        this.respiracionSutil = respiracionSutil;
+        this.manoSaludo = manoSaludo;
     }
 
     /** Arranca el ciclo de gestos aleatorios — parpadeo frecuente y, ocasionalmente, un guiño
@@ -89,6 +157,42 @@ public final class NexoBioAnimador {
         }
         gestosActivos = true;
         programarSiguienteGesto();
+        if (respiracionSutil && estadoActual == NexoBioEstado.NORMAL) {
+            iniciarRespiracion();
+        }
+    }
+
+    /** Escala vertical (±1.5%) + inclinación leve (±1.5°) + balanceo lateral leve
+     * (±{@value #AMPLITUD_BALANCEO_DP}dp) en bucle, muy lento: da sensación de "cuerpo vivo" en
+     * reposo (respira y se balancea apenas) sin competir con el parpadeo ni parecer un temblor.
+     * Un único {@link ValueAnimator} para las tres propiedades — no cuesta batería/CPU extra
+     * frente a la respiración original. Solo corre mientras el estado sea NORMAL (ver
+     * {@link #setEstado}, que la cancela al salir de NORMAL y la retoma al volver). */
+    private void iniciarRespiracion() {
+        if (animadorRespiracion != null) {
+            return;
+        }
+        float amplitudBalanceoPx = AMPLITUD_BALANCEO_DP * avatar.getResources().getDisplayMetrics().density;
+        ValueAnimator animador = ValueAnimator.ofFloat(0f, 1f);
+        animador.setDuration(DURACION_RESPIRACION_MS);
+        animador.setRepeatMode(ValueAnimator.REVERSE);
+        animador.setRepeatCount(ValueAnimator.INFINITE);
+        animador.addUpdateListener(a -> {
+            float t = (float) a.getAnimatedValue();
+            avatar.setScaleY(1f + 0.015f * t);
+            avatar.setRotation(-1.5f + 3f * t);
+            avatar.setTranslationX(-amplitudBalanceoPx + 2f * amplitudBalanceoPx * t);
+        });
+        animador.start();
+        animadorRespiracion = animador;
+    }
+
+    private void detenerRespiracion() {
+        if (animadorRespiracion != null) {
+            animadorRespiracion.cancel();
+            animadorRespiracion = null;
+        }
+        avatar.setTranslationX(0f);
     }
 
     private void programarSiguienteGesto() {
@@ -104,12 +208,12 @@ public final class NexoBioAnimador {
     private void ejecutarCicloGesto() {
         if (estadoActual == NexoBioEstado.NORMAL) {
             boolean esGuino = Math.random() < PROBABILIDAD_GUINO;
-            int drawableGesto = esGuino ? R.drawable.ic_nexobio_robot_wink : R.drawable.ic_nexobio_robot_blink;
+            int drawableGesto = esGuino ? drawableWink : drawableBlink;
             long duracion = esGuino ? GUINO_DURACION_MS : PARPADEO_DURACION_MS;
             avatar.setImageResource(drawableGesto);
             handler.postDelayed(() -> {
                 if (estadoActual == NexoBioEstado.NORMAL) {
-                    avatar.setImageResource(R.drawable.ic_nexobio_robot);
+                    avatar.setImageResource(drawableNormal);
                 }
             }, duracion);
         }
@@ -132,6 +236,17 @@ public final class NexoBioAnimador {
                     iniciarAnimador(crearPulsoAnillo());
                 }
                 break;
+            case SALUDANDO:
+                // Saludo inicial: solo mano levantada (si esta instancia tiene esa vista, ver
+                // manoSaludo) + boca sincronizada con el TTS del mensaje de bienvenida (ver
+                // VozAsistenteActivity.reproducirSaludoInicial()). A propósito SIN el pulso de
+                // avatar que sí usa HABLANDO: con la mano ya moviéndose de forma independiente,
+                // sumar el pulso del cuerpo competiría visualmente en vez de sumar (ver punto 3
+                // del pedido: "no quiero que dos animaciones se peleen entre sí").
+                iniciarSaludoMano();
+                bocaAbierta = false;
+                handler.post(bocaRunnable);
+                break;
             case HABLANDO:
                 iniciarAnimador(crearPulsoAvatar());
                 if (anilloPulso != null) {
@@ -151,8 +266,13 @@ public final class NexoBioAnimador {
                 break;
             case NORMAL:
             default:
-                // reposo: sin animación continua (además del parpadeo ocasional ya programado
-                // aparte); avatar ya restaurado por detenerAnimacionesDeEstado().
+                // reposo: sin animación de estado (además del parpadeo ocasional ya programado
+                // aparte); avatar ya restaurado por detenerAnimacionesDeEstado(). Si esta
+                // instancia usa respiración sutil, retomarla aquí (detenerAnimacionesDeEstado ya
+                // la había cancelado al entrar a este método).
+                if (respiracionSutil && gestosActivos) {
+                    iniciarRespiracion();
+                }
                 break;
         }
     }
@@ -219,20 +339,51 @@ public final class NexoBioAnimador {
         }, DURACION_ERROR_MS);
     }
 
-    /** Alterna boca cerrada/abierta mientras {@code estadoActual} siga siendo HABLANDO; se
-     * detiene sola en cuanto deja de serlo (llamada desde TTS onDone/onError vía
+    /** Alterna boca cerrada/abierta mientras {@code estadoActual} siga siendo HABLANDO o
+     * SALUDANDO; se detiene sola en cuanto deja de serlo (llamada desde TTS onDone/onError vía
      * {@code setEstado}, que ya canceló este runnable en {@link #detenerAnimacionesDeEstado()}
      * antes de aplicar el nuevo estado — esta comprobación es una segunda red de seguridad). */
     private void alternarBoca() {
-        if (estadoActual != NexoBioEstado.HABLANDO) {
+        if (estadoActual != NexoBioEstado.HABLANDO && estadoActual != NexoBioEstado.SALUDANDO) {
             return;
         }
         bocaAbierta = !bocaAbierta;
-        avatar.setImageResource(bocaAbierta ? R.drawable.ic_nexobio_robot_talk : R.drawable.ic_nexobio_robot);
+        avatar.setImageResource(bocaAbierta ? drawableTalk : drawableNormal);
         handler.postDelayed(bocaRunnable, BOCA_ALTERNANCIA_MS);
     }
 
+    /** Muestra la mano de saludo (si esta instancia la tiene, ver {@link #manoSaludo}) y la hace
+     * oscilar levemente en bucle, pivotada en su extremo inferior (la "muñeca"), como un saludo
+     * natural. Usa {@link RotateAnimation} clásico (no {@link ValueAnimator}) porque soporta
+     * pivote relativo en porcentaje directamente: evita tener que calcular a mano el pivote en
+     * píxeles y el riesgo de hacerlo antes de que la vista tenga tamaño medido (recién pasa de
+     * GONE a VISIBLE aquí mismo). No hace nada si esta instancia no tiene mano de saludo (avatar
+     * pequeño del chat). */
+    private void iniciarSaludoMano() {
+        if (manoSaludo == null) {
+            return;
+        }
+        manoSaludo.setVisibility(View.VISIBLE);
+        RotateAnimation rotacion = new RotateAnimation(-12f, 28f,
+                Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 1f);
+        rotacion.setDuration(DURACION_SALUDO_MANO_MS);
+        rotacion.setRepeatMode(Animation.REVERSE);
+        rotacion.setRepeatCount(Animation.INFINITE);
+        rotacion.setInterpolator(new AccelerateDecelerateInterpolator());
+        manoSaludo.startAnimation(rotacion);
+    }
+
+    private void detenerSaludoMano() {
+        if (manoSaludo == null) {
+            return;
+        }
+        manoSaludo.clearAnimation();
+        manoSaludo.setVisibility(View.GONE);
+    }
+
     private void detenerAnimacionesDeEstado() {
+        detenerRespiracion();
+        detenerSaludoMano();
         for (ValueAnimator animador : animadoresActivos) {
             animador.cancel();
         }
@@ -246,11 +397,11 @@ public final class NexoBioAnimador {
             anilloPulso.setScaleX(1f);
             anilloPulso.setScaleY(1f);
         }
-        // Corta cualquier ciclo de boca hablando pendiente (p. ej. al pasar de HABLANDO a
-        // NORMAL/ERROR) y deja el rostro en boca cerrada.
+        // Corta cualquier ciclo de boca hablando pendiente (p. ej. al pasar de HABLANDO/SALUDANDO
+        // a NORMAL/ERROR) y deja el rostro en boca cerrada.
         handler.removeCallbacks(bocaRunnable);
         bocaAbierta = false;
-        avatar.setImageResource(R.drawable.ic_nexobio_robot);
+        avatar.setImageResource(drawableNormal);
     }
 
     /** Cancela toda animación en curso (incluido el parpadeo) y vuelve el avatar a su estado de
@@ -260,7 +411,7 @@ public final class NexoBioAnimador {
         gestosActivos = false;
         handler.removeCallbacksAndMessages(null);
         detenerAnimacionesDeEstado();
-        avatar.setImageResource(R.drawable.ic_nexobio_robot);
+        avatar.setImageResource(drawableNormal);
         estadoActual = NexoBioEstado.NORMAL;
     }
 }

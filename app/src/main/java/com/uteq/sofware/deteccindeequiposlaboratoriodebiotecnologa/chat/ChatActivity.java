@@ -7,7 +7,10 @@ import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.text.SpannableString;
+import android.text.Spanned;
 import android.text.TextUtils;
+import android.text.style.ForegroundColorSpan;
 import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
@@ -39,18 +42,14 @@ import com.uteq.sofware.deteccindeequiposlaboratoriodebiotecnologa.network.ChatR
 import com.uteq.sofware.deteccindeequiposlaboratoriodebiotecnologa.network.ChatRequest;
 import com.uteq.sofware.deteccindeequiposlaboratoriodebiotecnologa.network.ChatResponse;
 import com.uteq.sofware.deteccindeequiposlaboratoriodebiotecnologa.network.HealthRepository;
-import com.uteq.sofware.deteccindeequiposlaboratoriodebiotecnologa.security.SecureConfigManager;
 import com.uteq.sofware.deteccindeequiposlaboratoriodebiotecnologa.speech.SpeechRecognitionManager;
 import com.uteq.sofware.deteccindeequiposlaboratoriodebiotecnologa.speech.TextToSpeechManager;
 import com.uteq.sofware.deteccindeequiposlaboratoriodebiotecnologa.util.InsetsUtil;
 import com.uteq.sofware.deteccindeequiposlaboratoriodebiotecnologa.util.NavegacionUtil;
 
 /**
- * Chat del asistente inteligente ("BioTec"). Envía únicamente equipo/área/pregunta al backend
- * (POST /api/chat); toda la recuperación de documentos (RAG) y la consulta al LLM ocurren en el
- * servidor, nunca en el dispositivo. Si el usuario configuró una API Key propia
- * (ver {@link ConfiguracionActivity}), esta se adjunta como encabezado HTTP; en caso
- * contrario, el backend usa la suya propia si la tiene configurada.
+ * Chat del asistente Bio: consulta OpenAI directamente mediante ChatRepository,
+ * con el manual del equipo seleccionado y la credencial incluida en el APK.
  * <p>
  * El equipo en contexto puede llegar de dos formas: como {@code Intent} extra al abrir esta
  * Activity (desde {@code EquipoDetalleActivity}), o eligiéndolo en vivo desde el botón de cámara
@@ -68,6 +67,14 @@ public class ChatActivity extends AppCompatActivity {
      * selección en vivo desde la cámara, ver {@link #lanzadorCamara} /
      * {@code DeteccionActivity.EXTRA_RESULTADO_CLASE_DETECTOR}. */
     public static final String EXTRA_CLASE_DETECTOR = "extra_clase_detector";
+
+    /** Historial ya conversado a traer al abrir el chat (ver {@code VozAsistenteActivity},
+     * "Usar chat escrito"): permite pasar de voz a texto sin perder lo ya preguntado/respondido.
+     * Opcional — si no viene (por ejemplo, al entrar desde {@code EquipoDetalleActivity}), el
+     * chat empieza vacío como siempre. Solo se aplica en una instancia NUEVA (ver
+     * {@code onCreate}: {@code savedInstanceState == null}), nunca sobre una recreación por
+     * rotación, para no pisar una conversación ya en curso en esta misma pantalla. */
+    public static final String EXTRA_MENSAJES_PREVIOS = "extra_mensajes_previos";
 
     private static final String KEY_EQUIPO_NOMBRE = "chat_equipo_nombre";
     private static final String KEY_AREA_NOMBRE = "chat_area_nombre";
@@ -102,7 +109,6 @@ public class ChatActivity extends AppCompatActivity {
 
     private ChatRepository chatRepository;
     private HealthRepository healthRepository;
-    private SecureConfigManager secureConfigManager;
     private TextToSpeechManager textToSpeechManager;
     private SpeechRecognitionManager speechRecognitionManager;
     private NexoBioAnimador nexoBioAnimador;
@@ -136,6 +142,17 @@ public class ChatActivity extends AppCompatActivity {
                 }
             });
 
+    /** Título de un item del menú de acción en blanco: el tema de este toolbar no aplica
+     * automáticamente navigationIconTint/titleTextColor a los items de acción, así que sin esto
+     * "Ver PDF" se vería con el color de texto por defecto del tema (oscuro, casi invisible
+     * sobre el verde de la barra). */
+    private static CharSequence blanco(String texto) {
+        SpannableString resultado = new SpannableString(texto);
+        resultado.setSpan(new ForegroundColorSpan(android.graphics.Color.WHITE), 0, texto.length(),
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        return resultado;
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -162,6 +179,30 @@ public class ChatActivity extends AppCompatActivity {
 
         MaterialToolbar toolbar = findViewById(R.id.toolbarChat);
         toolbar.setNavigationOnClickListener(v -> finish());
+        // Icono de "tres puntos" (menú de Configuración, ver más abajo) pintado en blanco: sin
+        // esto seguía el color por defecto del tema (oscuro), casi invisible sobre el verde de
+        // la barra — el motivo por el que costaba encontrarlo.
+        toolbar.setOverflowIcon(androidx.core.content.ContextCompat.getDrawable(this, R.drawable.ic_more_vert_white));
+        // "Ver PDF" queda SIEMPRE visible en la barra (con texto, no escondido en el menú de
+        // tres puntos): antes estaba oculto ahí y era difícil de encontrar. El texto se pinta
+        // en blanco a mano (SpannableString) porque el color de texto de los items de acción no
+        // sigue automáticamente a navigationIconTint/titleTextColor en este tema.
+        android.view.MenuItem itemVerPdf = toolbar.getMenu().add(0, 7001, 0, blanco(getString(R.string.bio_ver_pdf_boton)));
+        itemVerPdf.setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_ALWAYS | android.view.MenuItem.SHOW_AS_ACTION_WITH_TEXT);
+        toolbar.getMenu().add(0, 7002, 1, R.string.config_title).setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_NEVER);
+        toolbar.setOnMenuItemClickListener(item -> {
+            if (item.getItemId() == 7001) {
+                Intent pdf = new Intent(this, ManualPdfActivity.class);
+                pdf.putExtra(ChatActivity.EXTRA_CLASE_DETECTOR, claseDetectorEquipo);
+                startActivity(pdf);
+                return true;
+            }
+            if (item.getItemId() == 7002) {
+                startActivity(new Intent(this, com.uteq.sofware.deteccindeequiposlaboratoriodebiotecnologa.configuracion.ConfiguracionActivity.class));
+                return true;
+            }
+            return false;
+        });
 
         imageNexoBioAvatar = findViewById(R.id.imageNexoBioAvatar);
         View viewPulsoNexoBio = findViewById(R.id.viewPulsoNexoBio);
@@ -186,6 +227,12 @@ public class ChatActivity extends AppCompatActivity {
             List<ChatMensaje> mensajesGuardados = leerMensajesGuardados(savedInstanceState);
             if (mensajesGuardados != null) {
                 chatAdapter.restaurarMensajes(mensajesGuardados);
+                recyclerChat.scrollToPosition(Math.max(0, chatAdapter.getCantidadMensajes() - 1));
+            }
+        } else {
+            List<ChatMensaje> mensajesPrevios = leerMensajesPrevios();
+            if (mensajesPrevios != null && !mensajesPrevios.isEmpty()) {
+                chatAdapter.restaurarMensajes(mensajesPrevios);
                 recyclerChat.scrollToPosition(Math.max(0, chatAdapter.getCantidadMensajes() - 1));
             }
         }
@@ -222,7 +269,6 @@ public class ChatActivity extends AppCompatActivity {
 
         chatRepository = new ChatRepository(this);
         healthRepository = new HealthRepository(this);
-        secureConfigManager = new SecureConfigManager(this);
         textToSpeechManager = new TextToSpeechManager(this);
         speechRecognitionManager = new SpeechRecognitionManager(this);
 
@@ -347,6 +393,13 @@ public class ChatActivity extends AppCompatActivity {
         return (List<ChatMensaje>) savedInstanceState.getSerializable(KEY_MENSAJES);
     }
 
+    @SuppressWarnings({"deprecation", "unchecked"})
+    private List<ChatMensaje> leerMensajesPrevios() {
+        // Mismo motivo que leerMensajesGuardados(): overload genérico por compatibilidad con
+        // minSdk 31. Ver EXTRA_MENSAJES_PREVIOS (VozAsistenteActivity → "Usar chat escrito").
+        return (List<ChatMensaje>) getIntent().getSerializableExtra(EXTRA_MENSAJES_PREVIOS);
+    }
+
     /** Actualiza el equipo/área en contexto del chat y la tarjeta compacta que lo muestra (ver
      * {@code activity_chat.xml}, {@code cardEquipoSeleccionado}). Se usa tanto al abrir el chat
      * con un equipo ya elegido ({@code EquipoDetalleActivity}) como al volver de
@@ -380,19 +433,8 @@ public class ChatActivity extends AppCompatActivity {
         lanzadorCamara.launch(intent);
     }
 
-    /**
-     * Antes de habilitar el chat, comprueba si hay alguna forma de autenticarse ante OpenAI:
-     * una API Key local (guardada por el usuario) o una ya configurada en el backend
-     * ({@code /health} → {@code rag_configurado}). Si no hay red o el backend no responde,
-     * no se bloquea el chat aquí: el error de conexión se mostrará al intentar enviar una
-     * pregunta (ver {@link ChatRepository}).
-     */
+    /** Comprueba la credencial incluida en esta compilación sin depender de un backend local. */
     private void verificarDisponibilidadAsistente() {
-        if (secureConfigManager.hasApiKey()) {
-            mostrarChatDisponible();
-            return;
-        }
-
         healthRepository.consultarEstado(new HealthRepository.Callback() {
             @Override
             public void onResultado(boolean ragConfigurado) {
@@ -493,7 +535,7 @@ public class ChatActivity extends AppCompatActivity {
         chatRepository.enviarPregunta(request, new ChatRepository.Callback() {
             @Override
             public void onExito(ChatResponse respuesta) {
-                // La respuesta del backend puede tardar hasta 60s (ver ChatRepository): si el
+                // La respuesta de OpenAI puede tardar hasta 90s (ver ChatRepository): si el
                 // usuario ya salió del chat en ese tiempo, no toques RecyclerView/adapter de una
                 // Activity que ya terminó.
                 if (isFinishing() || isDestroyed()) {

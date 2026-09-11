@@ -21,9 +21,9 @@ def chat(
 ) -> ChatResponse:
     """
     Recibe únicamente equipo, área, clase_detector y pregunta (nunca documentos completos).
-    clase_detector es la clase estable del detector YOLO (labels.txt), usada para restringir
-    file_search al manual del equipo seleccionado (ver equipo_manual_map.py); puede venir
-    vacía. Opcionalmente,
+    clase_detector es la clase estable del detector YOLO (labels.txt), usada para resolver el
+    Vector Store dedicado de ese equipo y restringir file_search a él (ver
+    equipo_manual_map.py); puede venir vacía. Opcionalmente,
     Android puede enviar una OpenAI API Key propia en el encabezado "X-OpenAI-API-Key"; si no
     la envía, se usa la OPENAI_API_KEY del servidor (si existe). Esa clave nunca se guarda:
     se usa en memoria solo para esta petición.

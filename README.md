@@ -1,3 +1,7 @@
+> **Bio: conexión directa a OpenAI.** El chat escrito y por voz del APK ya no usan el backend
+> local, USB ni la IP de la computadora. Consulta [la configuración actual](docs/BIO_OPENAI_DIRECTO.md).
+> Las instrucciones del backend que aparecen más abajo corresponden al servicio opcional anterior.
+
 # Asistente Móvil Inteligente para la Detección de Equipos del Laboratorio de Biotecnología de la UTEQ
 
 Proyecto académico de la Universidad Técnica Estatal de Quevedo (UTEQ). Aplicación Android
@@ -89,7 +93,8 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 Ver `backend/README.md` y `docs/RAG_SETUP.md` para el detalle de configuración del RAG con
-OpenAI (Vector Store, `OPENAI_API_KEY`, `OPENAI_VECTOR_STORE_ID`).
+OpenAI (`OPENAI_API_KEY` y el mapeo clase→Vector Store por equipo, un Vector Store dedicado
+por cada una de las 17 clases).
 
 ## Estado actual
 
@@ -106,10 +111,11 @@ OpenAI (Vector Store, `OPENAI_API_KEY`, `OPENAI_VECTOR_STORE_ID`).
   OpenAI API Key, guardada cifrada en el dispositivo (`SecureConfigManager`, Android
   Keystore) y enviada al backend solo por el encabezado `X-OpenAI-API-Key` (nunca
   hardcodeada, nunca en logs, nunca completa en pantalla).
-- Backend FastAPI con `/health` y `/api/chat`, capaz de arrancar sin `OPENAI_API_KEY` ni
-  `OPENAI_VECTOR_STORE_ID` (responde con un mensaje controlado en ese caso). Acepta la clave
-  del servidor o la enviada desde Android (con prioridad para esta última), sin guardarla
-  nunca del lado del servidor.
+- Backend FastAPI con `/health` y `/api/chat`, capaz de arrancar sin `OPENAI_API_KEY`
+  (responde con un mensaje controlado en ese caso). Acepta la clave del servidor o la enviada
+  desde Android (con prioridad para esta última), sin guardarla nunca del lado del servidor.
+  Cada `clase_detector` consulta su propio Vector Store dedicado (17 equipos, ver
+  `backend/app/services/equipo_manual_map.py`), nunca un store compartido/general.
 - Comunicación Android↔backend vía Volley, con `BASE_URL` centralizada y manejo de errores
   HTTP (401/429/5xx) traducido a mensajes comprensibles, sin exponer detalles técnicos.
 

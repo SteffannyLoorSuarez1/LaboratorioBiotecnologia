@@ -7,6 +7,11 @@ package com.uteq.sofware.deteccindeequiposlaboratoriodebiotecnologa.chat;
 public enum NexoBioEstado {
     /** Reposo: casi estático (sin animación continua, para no gastar batería/CPU en vano). */
     NORMAL,
+    /** Saludo inicial al entrar a la conversación por voz: mano levantada saludando + boca
+     * sincronizada con el TTS del mensaje de bienvenida. Solo lo usa
+     * {@code VozAsistenteActivity} (ver {@link NexoBioAnimador#manoSaludo}); en el avatar
+     * pequeño del chat, que no tiene mano de saludo, se comporta igual que HABLANDO. */
+    SALUDANDO,
     /** Escuchando por el micrófono: pequeño pulso. */
     ESCUCHANDO,
     /** Esperando la respuesta del backend (RAG/LLM): balanceo vertical suave. */

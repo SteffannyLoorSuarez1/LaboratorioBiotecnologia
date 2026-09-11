@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pareja de ic_biotec_full.xml con un guiño (ojo izquierdo cerrado, derecho abierto). Ver
+     ic_nexobio_robot_wink.xml para el mismo criterio aplicado al avatar pequeño del chat. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="130dp"
+    android:height="200dp"
+    android:viewportWidth="26"
+    android:viewportHeight="40">
+
+    <!-- Cuerpo igual que ic_biotec_full.xml (ver ese archivo) — DEBE mantenerse en sincronía
+         exacta con ese archivo y con ic_biotec_full_blink.xml/_talk.xml: solo cambian los
+         ojos/boca de más abajo. -->
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M11,33 H15 A2,2 0 0 1 17,35 V36 A2,2 0 0 1 15,38 H11 A2,2 0 0 1 9,36 V35 A2,2 0 0 1 11,33 Z" />
+
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M3.6,20 A1.4,1.4 0 0 1 5,21.4 V27.6 A1.4,1.4 0 0 1 3.6,29 A1.4,1.4 0 0 1 2.2,27.6 V21.4 A1.4,1.4 0 0 1 3.6,20 Z" />
+    <path android:fillColor="#1B5E3C" android:pathData="M2.2,26.7 H5 V27.2 H2.2 Z" />
+
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M22.4,20 A1.4,1.4 0 0 1 23.8,21.4 V27.6 A1.4,1.4 0 0 1 22.4,29 A1.4,1.4 0 0 1 21,27.6 V21.4 A1.4,1.4 0 0 1 22.4,20 Z" />
+    <path android:fillColor="#1B5E3C" android:pathData="M21,26.7 H23.8 V27.2 H21 Z" />
+
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M9,18.6 H17 A4,4 0 0 1 21,22.6 V29 A4,4 0 0 1 17,33 H9 A4,4 0 0 1 5,29 V22.6 A4,4 0 0 1 9,18.6 Z" />
+
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#1B5E3C"
+        android:strokeWidth="1.1"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M9,18.6 L13,24 L17,18.6" />
+
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#F5A623"
+        android:strokeWidth="0.35"
+        android:pathData="M11.35,27 a1.65,1.65 0 1,0 3.3,0 a1.65,1.65 0 1,0 -3.3,0 Z" />
+    <path
+        android:fillColor="#F5A623"
+        android:pathData="M11.7,27 a1.3,1.3 0 1,0 2.6,0 a1.3,1.3 0 1,0 -2.6,0 Z" />
+
+    <path
+        android:fillColor="#1B5E3C"
+        android:pathData="M8,32.5 H18 A0.5,0.5 0 0 1 18.5,33 A0.5,0.5 0 0 1 18,33.5 H8 A0.5,0.5 0 0 1 7.5,33 A0.5,0.5 0 0 1 8,32.5 Z" />
+
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M12.3,2.6 H13.7 V5.6 H12.3 Z" />
+    <path
+        android:fillColor="#F5A623"
+        android:pathData="M11.35,1.9 a1.65,1.65 0 1,0 3.3,0 a1.65,1.65 0 1,0 -3.3,0 Z" />
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M12.2,1.4 a0.4,0.4 0 1,0 0.8,0 a0.4,0.4 0 1,0 -0.8,0 Z" />
+
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M7,5.6 H19 A3,3 0 0 1 22,8.6 V16.4 A3,3 0 0 1 19,19.4 H7 A3,3 0 0 1 4,16.4 V8.6 A3,3 0 0 1 7,5.6 Z" />
+
+    <!-- ojo izquierdo cerrado (guiño) -->
+    <path
+        android:fillColor="#1B5E3C"
+        android:pathData="M7.95,11.32 H11.05 A0.28,0.28 0 0 1 11.33,11.6 A0.28,0.28 0 0 1 11.05,11.88 H7.95 A0.28,0.28 0 0 1 7.67,11.6 A0.28,0.28 0 0 1 7.95,11.32 Z" />
+
+    <!-- ojo derecho abierto + brillo -->
+    <path
+        android:fillColor="#1B5E3C"
+        android:pathData="M14.65,11.6 a1.85,1.85 0 1,0 3.7,0 a1.85,1.85 0 1,0 -3.7,0 Z" />
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M15.17,11.05 a0.58,0.58 0 1,0 1.16,0 a0.58,0.58 0 1,0 -1.16,0 Z" />
+
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#1B5E3C"
+        android:strokeWidth="1.3"
+        android:strokeLineCap="round"
+        android:pathData="M9.8,15.3 Q13,17.6 16.2,15.3" />
+</vector>
